@@ -7,10 +7,10 @@
  */
 
 // Types
-export type { ResolvedSecurityConfig, SecurityConfig } from "./types";
-export { DEFAULT_SECURITY_CONFIG, resolveSecurityConfig } from "./types";
+export type { ResolvedSecurityConfig, SecurityConfig } from "./types"
+export { DEFAULT_SECURITY_CONFIG, resolveSecurityConfig } from "./types"
 // Validator
-export type { SecurityError, SecurityValidationResult, SecurityWarning } from "./validator";
+export type { SecurityError, SecurityValidationResult, SecurityWarning } from "./validator"
 export {
 	extractFilterFields,
 	validateFields,
@@ -19,4 +19,4 @@ export {
 	validateOperators,
 	validateSecurity,
 	validateSortFields,
-} from "./validator";
+} from "./validator"

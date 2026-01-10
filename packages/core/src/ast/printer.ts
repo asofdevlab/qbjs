@@ -8,8 +8,8 @@
  * @module ast/printer
  */
 
-import type { FilterNode, Pagination, QueryAST, SortSpec } from "./types";
-import { isFieldFilter, isLogicalFilter } from "./types";
+import type { FilterNode, Pagination, QueryAST, SortSpec } from "./types"
+import { isFieldFilter, isLogicalFilter } from "./types"
 
 /**
  * Convert a field array to a comma-separated string.
@@ -23,9 +23,9 @@ import { isFieldFilter, isLogicalFilter } from "./types";
  */
 export function printFields(fields: string[] | null): string | undefined {
 	if (!fields || fields.length === 0) {
-		return undefined;
+		return undefined
 	}
-	return fields.join(",");
+	return fields.join(",")
 }
 
 /**
@@ -39,8 +39,8 @@ export function printFields(fields: string[] | null): string | undefined {
  * printPagination({ offset: 0, limit: 10 }) // { page: 1, limit: 10 }
  */
 export function printPagination(pagination: Pagination): { page: number; limit: number } {
-	const page = Math.floor(pagination.offset / pagination.limit) + 1;
-	return { page, limit: pagination.limit };
+	const page = Math.floor(pagination.offset / pagination.limit) + 1
+	return { page, limit: pagination.limit }
 }
 
 /**
@@ -55,9 +55,9 @@ export function printPagination(pagination: Pagination): { page: number; limit: 
  */
 export function printSort(sort: SortSpec[]): string | undefined {
 	if (!sort || sort.length === 0) {
-		return undefined;
+		return undefined
 	}
-	return sort.map((s) => `${s.field}:${s.direction}`).join(",");
+	return sort.map((s) => `${s.field}:${s.direction}`).join(",")
 }
 
 /**
@@ -82,7 +82,7 @@ export function printSort(sort: SortSpec[]): string | undefined {
  */
 export function printFilter(filter: FilterNode | null): Record<string, unknown> | undefined {
 	if (!filter) {
-		return undefined;
+		return undefined
 	}
 
 	if (isFieldFilter(filter)) {
@@ -90,22 +90,22 @@ export function printFilter(filter: FilterNode | null): Record<string, unknown> 
 			[filter.field]: {
 				[filter.operator]: filter.value,
 			},
-		};
+		}
 	}
 
 	if (isLogicalFilter(filter)) {
-		const conditions = filter.conditions.map((c) => printFilter(c)).filter((c) => c !== undefined);
+		const conditions = filter.conditions.map((c) => printFilter(c)).filter((c) => c !== undefined)
 
 		if (conditions.length === 0) {
-			return undefined;
+			return undefined
 		}
 
 		return {
 			[filter.operator]: conditions,
-		};
+		}
 	}
 
-	return undefined;
+	return undefined
 }
 
 /**
@@ -113,15 +113,15 @@ export function printFilter(filter: FilterNode | null): Record<string, unknown> 
  */
 export interface PrintedQuery {
 	/** Comma-separated field names */
-	fields?: string;
+	fields?: string
 	/** Page number (1-based) */
-	page?: number;
+	page?: number
 	/** Number of items per page */
-	limit?: number;
+	limit?: number
 	/** Sort specification string */
-	sort?: string;
+	sort?: string
 	/** Filter object in QS format */
-	filter?: Record<string, unknown>;
+	filter?: Record<string, unknown>
 }
 
 /**
@@ -149,28 +149,28 @@ export interface PrintedQuery {
  * // }
  */
 export function print(ast: QueryAST): PrintedQuery {
-	const result: PrintedQuery = {};
+	const result: PrintedQuery = {}
 
-	const fields = printFields(ast.fields);
+	const fields = printFields(ast.fields)
 	if (fields !== undefined) {
-		result.fields = fields;
+		result.fields = fields
 	}
 
-	const { page, limit } = printPagination(ast.pagination);
-	result.page = page;
-	result.limit = limit;
+	const { page, limit } = printPagination(ast.pagination)
+	result.page = page
+	result.limit = limit
 
-	const sort = printSort(ast.sort);
+	const sort = printSort(ast.sort)
 	if (sort !== undefined) {
-		result.sort = sort;
+		result.sort = sort
 	}
 
-	const filter = printFilter(ast.filter);
+	const filter = printFilter(ast.filter)
 	if (filter !== undefined) {
-		result.filter = filter;
+		result.filter = filter
 	}
 
-	return result;
+	return result
 }
 
 /**
@@ -183,30 +183,30 @@ export function print(ast: QueryAST): PrintedQuery {
  * printQueryString(ast) // "fields=id,name&page=2&limit=10&sort=createdAt:desc"
  */
 export function printQueryString(ast: QueryAST): string {
-	const params = new URLSearchParams();
-	const printed = print(ast);
+	const params = new URLSearchParams()
+	const printed = print(ast)
 
 	if (printed.fields) {
-		params.set("fields", printed.fields);
+		params.set("fields", printed.fields)
 	}
 
 	if (printed.page !== undefined) {
-		params.set("page", String(printed.page));
+		params.set("page", String(printed.page))
 	}
 
 	if (printed.limit !== undefined) {
-		params.set("limit", String(printed.limit));
+		params.set("limit", String(printed.limit))
 	}
 
 	if (printed.sort) {
-		params.set("sort", printed.sort);
+		params.set("sort", printed.sort)
 	}
 
 	if (printed.filter) {
 		// For complex filters, we serialize as JSON
 		// Full QS serialization would be done by the caller using qs library
-		params.set("filter", JSON.stringify(printed.filter));
+		params.set("filter", JSON.stringify(printed.filter))
 	}
 
-	return params.toString();
+	return params.toString()
 }

@@ -1,7 +1,7 @@
-import { Scalar } from "@scalar/hono-api-reference";
-import packageJSON from "../../package.json";
-import { BASE_PATH } from "./constants";
-import type { AppOpenAPI } from "./types";
+import { Scalar } from "@scalar/hono-api-reference"
+import packageJSON from "../../package.json"
+import { BASE_PATH } from "./constants"
+import type { AppOpenAPI } from "./types"
 
 export default function configureOpenAPI(app: AppOpenAPI) {
 	app.doc("/doc", {
@@ -10,7 +10,7 @@ export default function configureOpenAPI(app: AppOpenAPI) {
 			version: packageJSON.version,
 			title: "Hono Drizzle PostgreSQL",
 		},
-	});
+	})
 
 	app.get(
 		"/reference",
@@ -24,5 +24,5 @@ export default function configureOpenAPI(app: AppOpenAPI) {
 			},
 			sources: [{ url: `${BASE_PATH}/doc`, title: "API" }],
 		}),
-	);
+	)
 }

@@ -31,21 +31,21 @@ export type FilterOperator =
 	| "endsWith"
 	| "null"
 	| "notNull"
-	| "between";
+	| "between"
 
 /**
  * Sort direction for ordering query results.
  */
-export type SortDirection = "asc" | "desc";
+export type SortDirection = "asc" | "desc"
 
 /**
  * Specification for sorting a single field.
  */
 export interface SortSpec {
 	/** The field name to sort by */
-	field: string;
+	field: string
 	/** The sort direction (ascending or descending) */
-	direction: SortDirection;
+	direction: SortDirection
 }
 
 /**
@@ -53,46 +53,46 @@ export interface SortSpec {
  */
 export interface FieldFilter {
 	/** Discriminator for filter node type */
-	type: "field";
+	type: "field"
 	/** The field name to filter on */
-	field: string;
+	field: string
 	/** The comparison operator */
-	operator: FilterOperator;
+	operator: FilterOperator
 	/** The value to compare against */
-	value: unknown;
+	value: unknown
 }
 
 /**
  * Logical operators for combining filter conditions.
  */
-export type LogicalOperator = "and" | "or" | "not";
+export type LogicalOperator = "and" | "or" | "not"
 
 /**
  * A logical combination of filter conditions.
  */
 export interface LogicalFilter {
 	/** Discriminator for filter node type */
-	type: "logical";
+	type: "logical"
 	/** The logical operator (and, or, not) */
-	operator: LogicalOperator;
+	operator: LogicalOperator
 	/** The conditions to combine */
-	conditions: FilterNode[];
+	conditions: FilterNode[]
 }
 
 /**
  * A filter node can be either a field filter or a logical filter.
  * This allows for arbitrarily complex filter expressions.
  */
-export type FilterNode = FieldFilter | LogicalFilter;
+export type FilterNode = FieldFilter | LogicalFilter
 
 /**
  * Pagination specification with offset-based pagination.
  */
 export interface Pagination {
 	/** Number of items to skip */
-	offset: number;
+	offset: number
 	/** Maximum number of items to return */
-	limit: number;
+	limit: number
 }
 
 /**
@@ -101,27 +101,27 @@ export interface Pagination {
  */
 export interface QueryAST {
 	/** Fields to select (null means all fields) */
-	fields: string[] | null;
+	fields: string[] | null
 	/** Pagination specification */
-	pagination: Pagination;
+	pagination: Pagination
 	/** Sort specifications (empty array means no sorting) */
-	sort: SortSpec[];
+	sort: SortSpec[]
 	/** Filter expression (null means no filtering) */
-	filter: FilterNode | null;
+	filter: FilterNode | null
 }
 
 /**
  * Type guard to check if a FilterNode is a FieldFilter.
  */
 export function isFieldFilter(node: FilterNode): node is FieldFilter {
-	return node.type === "field";
+	return node.type === "field"
 }
 
 /**
  * Type guard to check if a FilterNode is a LogicalFilter.
  */
 export function isLogicalFilter(node: FilterNode): node is LogicalFilter {
-	return node.type === "logical";
+	return node.type === "logical"
 }
 
 /**
@@ -147,14 +147,14 @@ export const FILTER_OPERATORS: readonly FilterOperator[] = [
 	"null",
 	"notNull",
 	"between",
-] as const;
+] as const
 
 /**
  * All supported logical operators as an array for validation.
  */
-export const LOGICAL_OPERATORS: readonly LogicalOperator[] = ["and", "or", "not"] as const;
+export const LOGICAL_OPERATORS: readonly LogicalOperator[] = ["and", "or", "not"] as const
 
 /**
  * All supported sort directions as an array for validation.
  */
-export const SORT_DIRECTIONS: readonly SortDirection[] = ["asc", "desc"] as const;
+export const SORT_DIRECTIONS: readonly SortDirection[] = ["asc", "desc"] as const

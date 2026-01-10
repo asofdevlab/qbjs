@@ -7,8 +7,8 @@
  * @module security/types
  */
 
-import type { FilterOperator } from "../ast/types";
-import { FILTER_OPERATORS } from "../ast/types";
+import type { FilterOperator } from "../ast/types"
+import { FILTER_OPERATORS } from "../ast/types"
 
 /**
  * Security configuration for query validation.
@@ -18,17 +18,17 @@ import { FILTER_OPERATORS } from "../ast/types";
  */
 export interface SecurityConfig {
 	/** Fields that are allowed to be queried. Empty array means all fields allowed. */
-	allowedFields?: string[];
+	allowedFields?: string[]
 	/** Relations that are allowed to be joined. Empty array means all relations allowed. */
-	allowedRelations?: string[];
+	allowedRelations?: string[]
 	/** Maximum limit for pagination. Queries exceeding this will be capped. max. limit is 100 */
-	maxLimit?: number;
+	maxLimit?: number
 	/** Filter operators that are allowed. If not specified, defaults are used. */
-	operators?: FilterOperator[];
+	operators?: FilterOperator[]
 	/** Default limit when not specified in query */
-	defaultLimit?: number;
+	defaultLimit?: number
 	/** Default page when not specified in query */
-	defaultPage?: number;
+	defaultPage?: number
 }
 
 /**
@@ -36,17 +36,17 @@ export interface SecurityConfig {
  */
 export interface ResolvedSecurityConfig {
 	/** Fields that are allowed to be queried. Empty array means all fields allowed. */
-	allowedFields: string[];
+	allowedFields: string[]
 	/** Relations that are allowed to be joined. Empty array means all relations allowed. */
-	allowedRelations: string[];
+	allowedRelations: string[]
 	/** Maximum limit for pagination. Queries exceeding this will be capped. */
-	maxLimit: number;
+	maxLimit: number
 	/** Filter operators that are allowed. */
-	operators: FilterOperator[];
+	operators: FilterOperator[]
 	/** Default limit when not specified in query */
-	defaultLimit: number;
+	defaultLimit: number
 	/** Default page when not specified in query */
-	defaultPage: number;
+	defaultPage: number
 }
 
 /**
@@ -67,7 +67,7 @@ export const DEFAULT_SECURITY_CONFIG: ResolvedSecurityConfig = {
 	operators: [...FILTER_OPERATORS], // All operators allowed by default
 	defaultLimit: 10,
 	defaultPage: 1,
-};
+}
 
 /**
  * Merge user-provided security config with defaults.
@@ -77,7 +77,7 @@ export const DEFAULT_SECURITY_CONFIG: ResolvedSecurityConfig = {
  */
 export function resolveSecurityConfig(config?: SecurityConfig): ResolvedSecurityConfig {
 	if (!config) {
-		return { ...DEFAULT_SECURITY_CONFIG };
+		return { ...DEFAULT_SECURITY_CONFIG }
 	}
 
 	return {
@@ -87,5 +87,5 @@ export function resolveSecurityConfig(config?: SecurityConfig): ResolvedSecurity
 		operators: config.operators ?? DEFAULT_SECURITY_CONFIG.operators,
 		defaultLimit: config.defaultLimit ?? DEFAULT_SECURITY_CONFIG.defaultLimit,
 		defaultPage: config.defaultPage ?? DEFAULT_SECURITY_CONFIG.defaultPage,
-	};
+	}
 }

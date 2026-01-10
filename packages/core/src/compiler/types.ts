@@ -7,28 +7,28 @@
  * @module compiler/types
  */
 
-import type { QueryAST } from "../ast/types";
+import type { QueryAST } from "../ast/types"
 
 /**
  * Error codes for compilation errors.
  */
-export type CompileErrorCode = "UNKNOWN_COLUMN" | "TYPE_MISMATCH" | "UNSUPPORTED_OPERATOR";
+export type CompileErrorCode = "UNKNOWN_COLUMN" | "TYPE_MISMATCH" | "UNSUPPORTED_OPERATOR"
 
 /**
  * Warning codes for compilation warnings.
  */
-export type CompileWarningCode = "COLUMN_IGNORED" | "OPERATOR_FALLBACK" | "PERFORMANCE_HINT";
+export type CompileWarningCode = "COLUMN_IGNORED" | "OPERATOR_FALLBACK" | "PERFORMANCE_HINT"
 
 /**
  * An error that occurred during compilation.
  */
 export interface CompileError {
 	/** The error code */
-	code: CompileErrorCode;
+	code: CompileErrorCode
 	/** The field that caused the error */
-	field: string;
+	field: string
 	/** Human-readable error message */
-	message: string;
+	message: string
 }
 
 /**
@@ -36,13 +36,13 @@ export interface CompileError {
  */
 export interface CompileWarning {
 	/** The warning code */
-	code: CompileWarningCode;
+	code: CompileWarningCode
 	/** The field that caused the warning */
-	field: string;
+	field: string
 	/** Human-readable warning message */
-	message: string;
+	message: string
 	/** Optional suggestion for fixing the issue */
-	suggestion?: string;
+	suggestion?: string
 }
 
 /**
@@ -51,11 +51,11 @@ export interface CompileWarning {
  */
 export interface CompilerResult<T> {
 	/** The compiled query, or null if compilation failed */
-	query: T | null;
+	query: T | null
 	/** Errors that occurred during compilation */
-	errors: CompileError[];
+	errors: CompileError[]
 	/** Warnings that occurred during compilation */
-	warnings: CompileWarning[];
+	warnings: CompileWarning[]
 }
 
 /**
@@ -70,14 +70,14 @@ export interface QueryCompiler<TTable, TQuery> {
 	 * @param table The table schema to compile against
 	 * @returns The compilation result with query, errors, and warnings
 	 */
-	compile(ast: QueryAST, table: TTable): CompilerResult<TQuery>;
+	compile(ast: QueryAST, table: TTable): CompilerResult<TQuery>
 }
 
 /**
  * Helper function to create a compile error.
  */
 export function createCompileError(code: CompileErrorCode, field: string, message: string): CompileError {
-	return { code, field, message };
+	return { code, field, message }
 }
 
 /**
@@ -89,5 +89,5 @@ export function createCompileWarning(
 	message: string,
 	suggestion?: string,
 ): CompileWarning {
-	return { code, field, message, suggestion };
+	return { code, field, message, suggestion }
 }

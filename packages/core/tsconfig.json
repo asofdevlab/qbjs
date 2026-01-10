@@ -21,9 +21,12 @@
 		"jsx": "preserve",
 		"allowJs": false,
 		"types": ["node"],
-		"baseUrl": "."
+		"baseUrl": ".",
+
+		/* Skip type checking of third-party declaration files */
+		"skipLibCheck": true
 	},
 
 	"include": ["src"],
-	"exclude": ["node_modules"]
+	"exclude": ["node_modules", "dist"]
 }

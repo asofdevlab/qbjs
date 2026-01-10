@@ -7,30 +7,30 @@
  * @module security/validator
  */
 
-import type { FilterNode, FilterOperator, QueryAST } from "../ast/types";
-import { isFieldFilter, isLogicalFilter } from "../ast/types";
-import type { SecurityConfig } from "./types";
-import { resolveSecurityConfig } from "./types";
+import type { FilterNode, FilterOperator, QueryAST } from "../ast/types"
+import { isFieldFilter, isLogicalFilter } from "../ast/types"
+import type { SecurityConfig } from "./types"
+import { resolveSecurityConfig } from "./types"
 
 /**
  * Security validation error
  */
 export interface SecurityError {
-	code: "FIELD_NOT_ALLOWED" | "OPERATOR_NOT_ALLOWED" | "LIMIT_EXCEEDED";
-	field: string;
-	message: string;
-	path: string[];
+	code: "FIELD_NOT_ALLOWED" | "OPERATOR_NOT_ALLOWED" | "LIMIT_EXCEEDED"
+	field: string
+	message: string
+	path: string[]
 }
 
 /**
  * Security validation warning
  */
 export interface SecurityWarning {
-	code: "LIMIT_CAPPED";
-	field: string;
-	message: string;
-	originalValue: number;
-	cappedValue: number;
+	code: "LIMIT_CAPPED"
+	field: string
+	message: string
+	originalValue: number
+	cappedValue: number
 }
 
 /**
@@ -38,13 +38,13 @@ export interface SecurityWarning {
  */
 export interface SecurityValidationResult {
 	/** Whether the validation passed (no errors) */
-	valid: boolean;
+	valid: boolean
 	/** Validation errors that prevent query execution */
-	errors: SecurityError[];
+	errors: SecurityError[]
 	/** Validation warnings (non-fatal issues) */
-	warnings: SecurityWarning[];
+	warnings: SecurityWarning[]
 	/** The potentially modified AST (e.g., with capped limit) */
-	ast: QueryAST | null;
+	ast: QueryAST | null
 }
 
 /**
@@ -55,11 +55,11 @@ export interface SecurityValidationResult {
  * @returns Array of security errors for disallowed fields
  */
 export function validateFields(fields: string[] | null, allowedFields: string[]): SecurityError[] {
-	const errors: SecurityError[] = [];
+	const errors: SecurityError[] = []
 
 	// If no fields specified or allowedFields is empty (all allowed), no validation needed
 	if (!fields || fields.length === 0 || allowedFields.length === 0) {
-		return errors;
+		return errors
 	}
 
 	for (const field of fields) {
@@ -69,11 +69,11 @@ export function validateFields(fields: string[] | null, allowedFields: string[])
 				field,
 				message: `Field "${field}" is not allowed. Allowed fields: ${allowedFields.join(", ")}`,
 				path: ["fields", field],
-			});
+			})
 		}
 	}
 
-	return errors;
+	return errors
 }
 
 /**
@@ -85,7 +85,7 @@ export function validateFields(fields: string[] | null, allowedFields: string[])
  */
 export function validateLimit(limit: number, maxLimit: number): { limit: number; warning: SecurityWarning | null } {
 	if (limit <= maxLimit) {
-		return { limit, warning: null };
+		return { limit, warning: null }
 	}
 
 	return {
@@ -97,7 +97,7 @@ export function validateLimit(limit: number, maxLimit: number): { limit: number;
 			originalValue: limit,
 			cappedValue: maxLimit,
 		},
-	};
+	}
 }
 
 /**
@@ -113,10 +113,10 @@ export function validateOperators(
 	allowedOperators: FilterOperator[],
 	path: string[] = ["filter"],
 ): SecurityError[] {
-	const errors: SecurityError[] = [];
+	const errors: SecurityError[] = []
 
 	if (!filter) {
-		return errors;
+		return errors
 	}
 
 	if (isFieldFilter(filter)) {
@@ -126,20 +126,20 @@ export function validateOperators(
 				field: filter.field,
 				message: `Operator "${filter.operator}" is not allowed. Allowed operators: ${allowedOperators.join(", ")}`,
 				path: [...path, filter.field, filter.operator],
-			});
+			})
 		}
 	} else if (isLogicalFilter(filter)) {
 		// Recursively validate conditions in logical filters
 		for (let i = 0; i < filter.conditions.length; i++) {
-			const condition = filter.conditions[i];
+			const condition = filter.conditions[i]
 			if (condition) {
-				const conditionErrors = validateOperators(condition, allowedOperators, [...path, filter.operator, String(i)]);
-				errors.push(...conditionErrors);
+				const conditionErrors = validateOperators(condition, allowedOperators, [...path, filter.operator, String(i)])
+				errors.push(...conditionErrors)
 			}
 		}
 	}
 
-	return errors;
+	return errors
 }
 
 /**
@@ -149,22 +149,22 @@ export function validateOperators(
  * @returns Array of unique field names
  */
 export function extractFilterFields(filter: FilterNode | null): string[] {
-	const fields = new Set<string>();
+	const fields = new Set<string>()
 
 	function traverse(node: FilterNode | null): void {
-		if (!node) return;
+		if (!node) return
 
 		if (isFieldFilter(node)) {
-			fields.add(node.field);
+			fields.add(node.field)
 		} else if (isLogicalFilter(node)) {
 			for (const condition of node.conditions) {
-				traverse(condition);
+				traverse(condition)
 			}
 		}
 	}
 
-	traverse(filter);
-	return Array.from(fields);
+	traverse(filter)
+	return Array.from(fields)
 }
 
 /**
@@ -180,14 +180,14 @@ export function validateFilterFields(
 	allowedFields: string[],
 	path: string[] = ["filter"],
 ): SecurityError[] {
-	const errors: SecurityError[] = [];
+	const errors: SecurityError[] = []
 
 	// If allowedFields is empty, all fields are allowed
 	if (allowedFields.length === 0 || !filter) {
-		return errors;
+		return errors
 	}
 
-	const filterFields = extractFilterFields(filter);
+	const filterFields = extractFilterFields(filter)
 
 	for (const field of filterFields) {
 		if (!allowedFields.includes(field)) {
@@ -196,11 +196,11 @@ export function validateFilterFields(
 				field,
 				message: `Filter field "${field}" is not allowed. Allowed fields: ${allowedFields.join(", ")}`,
 				path: [...path, field],
-			});
+			})
 		}
 	}
 
-	return errors;
+	return errors
 }
 
 /**
@@ -211,11 +211,11 @@ export function validateFilterFields(
  * @returns Array of security errors for disallowed fields
  */
 export function validateSortFields(sort: QueryAST["sort"], allowedFields: string[]): SecurityError[] {
-	const errors: SecurityError[] = [];
+	const errors: SecurityError[] = []
 
 	// If allowedFields is empty, all fields are allowed
 	if (allowedFields.length === 0 || sort.length === 0) {
-		return errors;
+		return errors
 	}
 
 	for (const spec of sort) {
@@ -225,11 +225,11 @@ export function validateSortFields(sort: QueryAST["sort"], allowedFields: string
 				field: spec.field,
 				message: `Sort field "${spec.field}" is not allowed. Allowed fields: ${allowedFields.join(", ")}`,
 				path: ["sort", spec.field],
-			});
+			})
 		}
 	}
 
-	return errors;
+	return errors
 }
 
 /**
@@ -253,33 +253,33 @@ export function validateSecurity(ast: QueryAST | null, config?: SecurityConfig):
 			errors: [],
 			warnings: [],
 			ast: null,
-		};
+		}
 	}
 
-	const resolvedConfig = resolveSecurityConfig(config);
-	const errors: SecurityError[] = [];
-	const warnings: SecurityWarning[] = [];
+	const resolvedConfig = resolveSecurityConfig(config)
+	const errors: SecurityError[] = []
+	const warnings: SecurityWarning[] = []
 
 	// Validate selected fields
-	const fieldErrors = validateFields(ast.fields, resolvedConfig.allowedFields);
-	errors.push(...fieldErrors);
+	const fieldErrors = validateFields(ast.fields, resolvedConfig.allowedFields)
+	errors.push(...fieldErrors)
 
 	// Validate filter fields
-	const filterFieldErrors = validateFilterFields(ast.filter, resolvedConfig.allowedFields);
-	errors.push(...filterFieldErrors);
+	const filterFieldErrors = validateFilterFields(ast.filter, resolvedConfig.allowedFields)
+	errors.push(...filterFieldErrors)
 
 	// Validate sort fields
-	const sortFieldErrors = validateSortFields(ast.sort, resolvedConfig.allowedFields);
-	errors.push(...sortFieldErrors);
+	const sortFieldErrors = validateSortFields(ast.sort, resolvedConfig.allowedFields)
+	errors.push(...sortFieldErrors)
 
 	// Validate filter operators
-	const operatorErrors = validateOperators(ast.filter, resolvedConfig.operators);
-	errors.push(...operatorErrors);
+	const operatorErrors = validateOperators(ast.filter, resolvedConfig.operators)
+	errors.push(...operatorErrors)
 
 	// Validate and cap limit
-	const { limit: cappedLimit, warning: limitWarning } = validateLimit(ast.pagination.limit, resolvedConfig.maxLimit);
+	const { limit: cappedLimit, warning: limitWarning } = validateLimit(ast.pagination.limit, resolvedConfig.maxLimit)
 	if (limitWarning) {
-		warnings.push(limitWarning);
+		warnings.push(limitWarning)
 	}
 
 	// Create modified AST with capped limit if needed
@@ -289,12 +289,12 @@ export function validateSecurity(ast: QueryAST | null, config?: SecurityConfig):
 			...ast.pagination,
 			limit: cappedLimit,
 		},
-	};
+	}
 
 	return {
 		valid: errors.length === 0,
 		errors,
 		warnings,
 		ast: modifiedAst,
-	};
+	}
 }

@@ -17,21 +17,21 @@ import type {
 	QueryAST,
 	SortDirection,
 	SortSpec,
-} from "./types";
-import { FILTER_OPERATORS, LOGICAL_OPERATORS, SORT_DIRECTIONS } from "./types";
+} from "./types"
+import { FILTER_OPERATORS, LOGICAL_OPERATORS, SORT_DIRECTIONS } from "./types"
 
 /**
  * Options for creating a QueryAST
  */
 export interface CreateQueryASTOptions {
 	/** Fields to select (null or undefined means all fields) */
-	fields?: string[] | null;
+	fields?: string[] | null
 	/** Pagination options */
-	pagination?: Partial<Pagination>;
+	pagination?: Partial<Pagination>
 	/** Sort specifications */
-	sort?: SortSpec[];
+	sort?: SortSpec[]
 	/** Filter expression */
-	filter?: FilterNode | null;
+	filter?: FilterNode | null
 }
 
 /**
@@ -40,7 +40,7 @@ export interface CreateQueryASTOptions {
 export const DEFAULT_PAGINATION: Pagination = {
 	offset: 0,
 	limit: 10,
-};
+}
 
 /**
  * Creates a valid QueryAST with validation.
@@ -50,16 +50,16 @@ export const DEFAULT_PAGINATION: Pagination = {
  * @throws Error if validation fails
  */
 export function createQueryAST(options: CreateQueryASTOptions = {}): QueryAST {
-	const { fields = null, pagination = {}, sort = [], filter = null } = options;
+	const { fields = null, pagination = {}, sort = [], filter = null } = options
 
 	// Validate fields
 	if (fields !== null) {
 		if (!Array.isArray(fields)) {
-			throw new Error("fields must be an array or null");
+			throw new Error("fields must be an array or null")
 		}
 		for (const field of fields) {
 			if (typeof field !== "string" || field.length === 0) {
-				throw new Error("Each field must be a non-empty string");
+				throw new Error("Each field must be a non-empty string")
 			}
 		}
 	}
@@ -68,26 +68,26 @@ export function createQueryAST(options: CreateQueryASTOptions = {}): QueryAST {
 	const resolvedPagination: Pagination = {
 		offset: pagination.offset ?? DEFAULT_PAGINATION.offset,
 		limit: pagination.limit ?? DEFAULT_PAGINATION.limit,
-	};
+	}
 
 	if (typeof resolvedPagination.offset !== "number" || resolvedPagination.offset < 0) {
-		throw new Error("pagination.offset must be a non-negative number");
+		throw new Error("pagination.offset must be a non-negative number")
 	}
 	if (typeof resolvedPagination.limit !== "number" || resolvedPagination.limit <= 0) {
-		throw new Error("pagination.limit must be a positive number");
+		throw new Error("pagination.limit must be a positive number")
 	}
 
 	// Validate sort
 	if (!Array.isArray(sort)) {
-		throw new Error("sort must be an array");
+		throw new Error("sort must be an array")
 	}
 	for (const sortSpec of sort) {
-		validateSortSpec(sortSpec);
+		validateSortSpec(sortSpec)
 	}
 
 	// Validate filter
 	if (filter !== null) {
-		validateFilterNode(filter);
+		validateFilterNode(filter)
 	}
 
 	return {
@@ -95,7 +95,7 @@ export function createQueryAST(options: CreateQueryASTOptions = {}): QueryAST {
 		pagination: resolvedPagination,
 		sort,
 		filter,
-	};
+	}
 }
 
 /**
@@ -108,13 +108,13 @@ export function createQueryAST(options: CreateQueryASTOptions = {}): QueryAST {
  */
 export function createSortSpec(field: string, direction: SortDirection = "asc"): SortSpec {
 	if (typeof field !== "string" || field.length === 0) {
-		throw new Error("field must be a non-empty string");
+		throw new Error("field must be a non-empty string")
 	}
 	if (!SORT_DIRECTIONS.includes(direction)) {
-		throw new Error(`direction must be one of: ${SORT_DIRECTIONS.join(", ")}`);
+		throw new Error(`direction must be one of: ${SORT_DIRECTIONS.join(", ")}`)
 	}
 
-	return { field, direction };
+	return { field, direction }
 }
 
 /**
@@ -128,10 +128,10 @@ export function createSortSpec(field: string, direction: SortDirection = "asc"):
  */
 export function createFieldFilter(field: string, operator: FilterOperator, value: unknown): FieldFilter {
 	if (typeof field !== "string" || field.length === 0) {
-		throw new Error("field must be a non-empty string");
+		throw new Error("field must be a non-empty string")
 	}
 	if (!FILTER_OPERATORS.includes(operator)) {
-		throw new Error(`operator must be one of: ${FILTER_OPERATORS.join(", ")}`);
+		throw new Error(`operator must be one of: ${FILTER_OPERATORS.join(", ")}`)
 	}
 
 	return {
@@ -139,7 +139,7 @@ export function createFieldFilter(field: string, operator: FilterOperator, value
 		field,
 		operator,
 		value,
-	};
+	}
 }
 
 /**
@@ -152,25 +152,25 @@ export function createFieldFilter(field: string, operator: FilterOperator, value
  */
 export function createLogicalFilter(operator: LogicalOperator, conditions: FilterNode[]): LogicalFilter {
 	if (!LOGICAL_OPERATORS.includes(operator)) {
-		throw new Error(`operator must be one of: ${LOGICAL_OPERATORS.join(", ")}`);
+		throw new Error(`operator must be one of: ${LOGICAL_OPERATORS.join(", ")}`)
 	}
 	if (!Array.isArray(conditions)) {
-		throw new Error("conditions must be an array");
+		throw new Error("conditions must be an array")
 	}
 	if (conditions.length === 0) {
-		throw new Error("conditions must have at least one element");
+		throw new Error("conditions must have at least one element")
 	}
 
 	// Validate each condition
 	for (const condition of conditions) {
-		validateFilterNode(condition);
+		validateFilterNode(condition)
 	}
 
 	return {
 		type: "logical",
 		operator,
 		conditions,
-	};
+	}
 }
 
 /**
@@ -181,13 +181,13 @@ export function createLogicalFilter(operator: LogicalOperator, conditions: Filte
  */
 function validateSortSpec(sortSpec: SortSpec): void {
 	if (typeof sortSpec !== "object" || sortSpec === null) {
-		throw new Error("SortSpec must be an object");
+		throw new Error("SortSpec must be an object")
 	}
 	if (typeof sortSpec.field !== "string" || sortSpec.field.length === 0) {
-		throw new Error("SortSpec.field must be a non-empty string");
+		throw new Error("SortSpec.field must be a non-empty string")
 	}
 	if (!SORT_DIRECTIONS.includes(sortSpec.direction)) {
-		throw new Error(`SortSpec.direction must be one of: ${SORT_DIRECTIONS.join(", ")}`);
+		throw new Error(`SortSpec.direction must be one of: ${SORT_DIRECTIONS.join(", ")}`)
 	}
 }
 
@@ -199,33 +199,33 @@ function validateSortSpec(sortSpec: SortSpec): void {
  */
 function validateFilterNode(node: FilterNode): void {
 	if (typeof node !== "object" || node === null) {
-		throw new Error("FilterNode must be an object");
+		throw new Error("FilterNode must be an object")
 	}
 
 	if (node.type === "field") {
 		if (typeof node.field !== "string" || node.field.length === 0) {
-			throw new Error("FieldFilter.field must be a non-empty string");
+			throw new Error("FieldFilter.field must be a non-empty string")
 		}
 		if (!FILTER_OPERATORS.includes(node.operator)) {
-			throw new Error(`FieldFilter.operator must be one of: ${FILTER_OPERATORS.join(", ")}`);
+			throw new Error(`FieldFilter.operator must be one of: ${FILTER_OPERATORS.join(", ")}`)
 		}
 		if (!("value" in node)) {
-			throw new Error("FieldFilter must have a value property");
+			throw new Error("FieldFilter must have a value property")
 		}
 	} else if (node.type === "logical") {
 		if (!LOGICAL_OPERATORS.includes(node.operator)) {
-			throw new Error(`LogicalFilter.operator must be one of: ${LOGICAL_OPERATORS.join(", ")}`);
+			throw new Error(`LogicalFilter.operator must be one of: ${LOGICAL_OPERATORS.join(", ")}`)
 		}
 		if (!Array.isArray(node.conditions)) {
-			throw new Error("LogicalFilter.conditions must be an array");
+			throw new Error("LogicalFilter.conditions must be an array")
 		}
 		if (node.conditions.length === 0) {
-			throw new Error("LogicalFilter.conditions must have at least one element");
+			throw new Error("LogicalFilter.conditions must have at least one element")
 		}
 		for (const condition of node.conditions) {
-			validateFilterNode(condition);
+			validateFilterNode(condition)
 		}
 	} else {
-		throw new Error("FilterNode.type must be 'field' or 'logical'");
+		throw new Error("FilterNode.type must be 'field' or 'logical'")
 	}
 }

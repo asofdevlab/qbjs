@@ -8,17 +8,17 @@
 		"email": "support@asof.dev"
 	},
 	"scripts": {
-		"build": "turbo run build --filter=[HEAD^1]",
+		"build": "turbo run build",
 		"dev": "turbo run dev",
 		"dev:doc": "pnpm --filter @qbjs/documentation dev",
 		"build:doc": "pnpm --filter @qbjs/documentation build",
-		"format": "turbo run format --filter=[HEAD^1]",
-		"test": "turbo run test --filter=[HEAD^1]",
-		"check-types": "turbo run check-types --filter=[HEAD^1]",
+		"format": "turbo run format",
+		"test": "turbo run test",
+		"check-types": "turbo run check-types",
 		"prepare": "husky",
 		"clean": "turbo run clean && rm -rf node_modules",
-		"clean:turbo": "rm -rf .turbo packages/*/.turbo examples/*/.turbo documentation/*/.turbo",
-		"clean:deps": "rm -rf node_modules packages/*/node_modules examples/*/node_modules documentation/*/node_modules",
+		"clean:turbo": "rm -rf .turbo packages/*/.turbo apps/*/.turbo examples/*/.turbo documentation/*/.turbo",
+		"clean:deps": "rm -rf node_modules packages/*/node_modules apps/*/node_modules examples/*/node_modules documentation/*/node_modules",
 		"clean:lockfiles": "rm -rf pnpm-lock.yaml",
 		"reset": "pnpm clean:lockfiles clean:deps && pnpm clean:turbo && pnpm install",
 		"db:generate": "pnpm --filter @examples/hono-drizzle-pg db:generate",
@@ -26,7 +26,7 @@
 		"db:studio": "pnpm --filter @examples/hono-drizzle-pg db:studio"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.3.8",
+		"@biomejs/biome": "2.3.10",
 		"husky": "^9.1.7",
 		"turbo": "^2.7.3",
 		"typescript": "5.9.2"
