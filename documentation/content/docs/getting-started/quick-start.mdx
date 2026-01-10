@@ -1,0 +1,206 @@
+---
+title: Quick Start
+description: Build your first type-safe query with qbjs in minutes
+icon: Rocket
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+This guide walks you through building a complete API endpoint with qbjs, Hono, and Drizzle ORM.
+
+## Overview
+
+qbjs uses a **Parser → AST → Compiler** architecture:
+
+1. **Parser**: Transforms query strings into a structured AST
+2. **AST**: A well-defined intermediate representation
+3. **Compiler**: Converts the AST into database-specific queries
+
+## Step-by-Step Guide
+
+<Steps>
+<Step>
+### Define Your Database Schema
+
+First, create a Drizzle schema for your table:
+
+```typescript title="db/schema.ts"
+import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
+
+export const users = pgTable("users", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+```
+</Step>
+
+<Step>
+### Create a Query Builder
+
+Configure a query builder with security settings and a compiler:
+
+```typescript title="lib/query-builder.ts"
+import { createQueryBuilder, createDrizzlePgCompiler } from "@qbjs/core";
+import { users } from "./db/schema";
+
+export const userQueryBuilder = createQueryBuilder({
+  config: {
+    // Only allow these fields to be queried
+    allowedFields: ["id", "name", "email", "status", "createdAt"],
+    // Maximum items per page
+    maxLimit: 100,
+    // Default items per page
+    defaultLimit: 10,
+  },
+  compiler: createDrizzlePgCompiler(),
+});
+```
+</Step>
+
+<Step>
+### Build Your API Endpoint
+
+Use the query builder in your Hono route handler:
+
+```typescript title="routes/users.ts"
+import { Hono } from "hono";
+import { db } from "./db";
+import { users } from "./db/schema";
+import { userQueryBuilder } from "./lib/query-builder";
+
+const app = new Hono();
+
+app.get("/users", async (c) => {
+  // Parse and compile the query from the URL
+  const result = userQueryBuilder.executeFromUrl(c.req.url, users);
+
+  // Handle validation errors
+  if (result.errors.length > 0) {
+    return c.json({ errors: result.errors }, 400);
+  }
+
+  // Execute the compiled query
+  const data = await db.query.users.findMany({
+    columns: result.query?.columns,
+    where: result.query?.where,
+    orderBy: result.query?.orderBy,
+    limit: result.query?.limit,
+    offset: result.query?.offset,
+  });
+
+  return c.json(data);
+});
+
+export default app;
+```
+</Step>
+
+<Step>
+### Query Your API
+
+Now you can query your API with rich filtering, sorting, and pagination:
+
+```bash
+# Get all users
+GET /users
+
+# Filter by status
+GET /users?filter[status][eq]=active
+
+# Select specific fields
+GET /users?fields=id,name,email
+
+# Sort by creation date (descending)
+GET /users?sort=createdAt:desc
+
+# Paginate results
+GET /users?page=2&limit=10
+
+# Combine everything
+GET /users?fields=id,name&filter[status][eq]=active&sort=createdAt:desc&page=1&limit=20
+```
+</Step>
+</Steps>
+
+## Understanding the Result
+
+The `executeFromUrl` method returns a result object with:
+
+```typescript
+interface QueryBuilderExecuteResult {
+  // The compiled Drizzle query options
+  query: {
+    columns: Record<string, boolean>;  // Field selection
+    where: SQL | undefined;            // Filter conditions
+    orderBy: SQL[];                    // Sort specifications
+    limit: number;                     // Items per page
+    offset: number;                    // Pagination offset
+  } | null;
+
+  // The intermediate AST (useful for debugging)
+  ast: QueryAST | null;
+
+  // Any validation errors
+  errors: QueryBuilderError[];
+
+  // Non-fatal warnings
+  warnings: QueryBuilderWarning[];
+}
+```
+
+## Parsing Query Strings Manually
+
+If you need more control, you can parse and compile separately:
+
+```typescript
+import { parse, createDrizzlePgCompiler } from "@qbjs/core";
+
+// Step 1: Parse query string to AST
+const parseResult = parse({
+  fields: "id,name,email",
+  page: "1",
+  limit: "10",
+  sort: "createdAt:desc",
+  filter: { status: { eq: "active" } },
+});
+
+if (parseResult.errors.length > 0) {
+  console.error("Parse errors:", parseResult.errors);
+}
+
+// Step 2: Compile AST to Drizzle query
+const compiler = createDrizzlePgCompiler();
+const compileResult = compiler.compile(parseResult.ast!, users);
+
+console.log(compileResult.query);
+```
+
+## Parsing from Raw Query Strings
+
+You can also parse raw query strings directly:
+
+```typescript
+import { parseQueryString, parseFromUrl } from "@qbjs/core";
+
+// Parse a query string (with or without leading ?)
+const result1 = parseQueryString("fields=id,name&filter[status][eq]=active");
+const result2 = parseQueryString("?page=2&limit=10&sort=createdAt:desc");
+
+// Parse from a full URL
+const result3 = parseFromUrl("http://localhost:3000/users?filter[name][contains]=john");
+```
+
+<Callout type="info">
+  qbjs uses the [qs](https://github.com/ljharb/qs) library internally for parsing bracket notation in query strings like `filter[status][eq]=active`.
+</Callout>
+
+## Next Steps
+
+- Learn about the [query string format](/docs/getting-started/basic-usage) in detail
+- Understand the [Parser → AST → Compiler architecture](/docs/core-concepts/architecture)
+- Configure [security settings](/docs/core-concepts/security) for production
+- Explore all [filter operators](/docs/guides/filtering)

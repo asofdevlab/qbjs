@@ -1,0 +1,254 @@
+---
+title: QueryAST
+description: Understanding the Abstract Syntax Tree structure in qbjs
+---
+
+# QueryAST
+
+The QueryAST is the central data structure in qbjs. It represents a parsed query in a normalized, type-safe format that serves as the contract between the parser and compilers.
+
+## Structure Overview
+
+```typescript
+interface QueryAST {
+  fields: string[] | null;
+  pagination: Pagination;
+  sort: SortSpec[];
+  filter: FilterNode | null;
+}
+```
+
+## Fields
+
+The `fields` property specifies which columns to select from the database.
+
+```typescript
+// Select specific fields
+fields: ["id", "name", "email"]
+
+// Select all fields (null means no restriction)
+fields: null
+```
+
+When `fields` is `null`, the compiler will select all columns from the table. When it's an array, only those specific columns are selected.
+
+## Pagination
+
+The `pagination` property controls result set size and offset using offset-based pagination.
+
+```typescript
+interface Pagination {
+  offset: number;  // Number of items to skip
+  limit: number;   // Maximum items to return
+}
+```
+
+Example values:
+
+```typescript
+// Page 1 with 10 items per page
+pagination: { offset: 0, limit: 10 }
+
+// Page 3 with 20 items per page
+pagination: { offset: 40, limit: 20 }
+```
+
+The parser automatically converts page numbers to offsets:
+- `page=1, limit=10` → `offset: 0, limit: 10`
+- `page=2, limit=10` → `offset: 10, limit: 10`
+- `page=3, limit=20` → `offset: 40, limit: 20`
+
+## Sort
+
+The `sort` property is an array of sort specifications, allowing multi-column sorting.
+
+```typescript
+interface SortSpec {
+  field: string;
+  direction: "asc" | "desc";
+}
+```
+
+Example values:
+
+```typescript
+// Sort by createdAt descending
+sort: [{ field: "createdAt", direction: "desc" }]
+
+// Sort by status ascending, then by createdAt descending
+sort: [
+  { field: "status", direction: "asc" },
+  { field: "createdAt", direction: "desc" }
+]
+
+// No sorting
+sort: []
+```
+
+## Filter
+
+The `filter` property is a tree structure that can represent simple conditions or complex logical expressions.
+
+### FilterNode Types
+
+A `FilterNode` is a discriminated union of two types:
+
+```typescript
+type FilterNode = FieldFilter | LogicalFilter;
+```
+
+### FieldFilter
+
+A field filter represents a condition on a single field:
+
+```typescript
+interface FieldFilter {
+  type: "field";
+  field: string;
+  operator: FilterOperator;
+  value: unknown;
+}
+```
+
+Example:
+
+```typescript
+// status equals "active"
+{
+  type: "field",
+  field: "status",
+  operator: "eq",
+  value: "active"
+}
+
+// age greater than 18
+{
+  type: "field",
+  field: "age",
+  operator: "gt",
+  value: 18
+}
+```
+
+### LogicalFilter
+
+A logical filter combines multiple conditions:
+
+```typescript
+interface LogicalFilter {
+  type: "logical";
+  operator: "and" | "or" | "not";
+  conditions: FilterNode[];
+}
+```
+
+Example:
+
+```typescript
+// status = "active" AND role = "admin"
+{
+  type: "logical",
+  operator: "and",
+  conditions: [
+    { type: "field", field: "status", operator: "eq", value: "active" },
+    { type: "field", field: "role", operator: "eq", value: "admin" }
+  ]
+}
+```
+
+### Filter Operators
+
+qbjs supports these filter operators:
+
+| Operator | Description | Example Value |
+|----------|-------------|---------------|
+| `eq` | Equals | `"active"` |
+| `eqi` | Equals (case-insensitive) | `"Active"` |
+| `ne` | Not equals | `"deleted"` |
+| `nei` | Not equals (case-insensitive) | `"Deleted"` |
+| `lt` | Less than | `100` |
+| `lte` | Less than or equal | `100` |
+| `gt` | Greater than | `0` |
+| `gte` | Greater than or equal | `18` |
+| `in` | In array | `["a", "b", "c"]` |
+| `notIn` | Not in array | `["x", "y"]` |
+| `contains` | Contains substring | `"search"` |
+| `containsi` | Contains (case-insensitive) | `"Search"` |
+| `notContains` | Does not contain | `"spam"` |
+| `notContainsi` | Does not contain (case-insensitive) | `"Spam"` |
+| `startsWith` | Starts with | `"prefix"` |
+| `endsWith` | Ends with | `"suffix"` |
+| `null` | Is null | `true` |
+| `notNull` | Is not null | `true` |
+| `between` | Between two values | `[10, 20]` |
+
+## Complete AST Example
+
+Here's a complete QueryAST representing a complex query:
+
+```typescript
+const ast: QueryAST = {
+  // Select only these fields
+  fields: ["id", "title", "status", "createdAt"],
+  
+  // Page 2 with 20 items per page
+  pagination: {
+    offset: 20,
+    limit: 20
+  },
+  
+  // Sort by status ascending, then createdAt descending
+  sort: [
+    { field: "status", direction: "asc" },
+    { field: "createdAt", direction: "desc" }
+  ],
+  
+  // Complex filter: (status = "published" OR status = "draft") AND title contains "typescript"
+  filter: {
+    type: "logical",
+    operator: "and",
+    conditions: [
+      {
+        type: "logical",
+        operator: "or",
+        conditions: [
+          { type: "field", field: "status", operator: "eq", value: "published" },
+          { type: "field", field: "status", operator: "eq", value: "draft" }
+        ]
+      },
+      {
+        type: "field",
+        field: "title",
+        operator: "containsi",
+        value: "typescript"
+      }
+    ]
+  }
+};
+```
+
+## Type Guards
+
+qbjs provides type guards for working with filter nodes:
+
+```typescript
+import { isFieldFilter, isLogicalFilter } from "@qbjs/core";
+
+function processFilter(node: FilterNode) {
+  if (isFieldFilter(node)) {
+    // TypeScript knows node is FieldFilter
+    console.log(`Field: ${node.field}, Operator: ${node.operator}`);
+  }
+  
+  if (isLogicalFilter(node)) {
+    // TypeScript knows node is LogicalFilter
+    console.log(`Logical: ${node.operator}, Conditions: ${node.conditions.length}`);
+  }
+}
+```
+
+## Next Steps
+
+- Learn [how the parser creates ASTs](/docs/core-concepts/parser)
+- See [how compilers use ASTs](/docs/core-concepts/compilers)
+- Explore [filtering in depth](/docs/guides/filtering)

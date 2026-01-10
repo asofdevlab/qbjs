@@ -1,0 +1,378 @@
+---
+title: Compilers
+description: API reference for database compilers that transform AST into Drizzle ORM queries
+---
+
+Compilers transform the QueryAST into ORM-specific query objects. qbjs provides compilers for PostgreSQL, MySQL, and SQLite through Drizzle ORM.
+
+## PostgreSQL Compiler
+
+### createDrizzlePgCompiler
+
+Create a new Drizzle PostgreSQL compiler instance.
+
+```typescript
+import { createDrizzlePgCompiler } from '@qbjs/core';
+
+const compiler = createDrizzlePgCompiler();
+```
+
+### DrizzlePgCompiler
+
+Class that compiles QueryAST into Drizzle ORM queries optimized for PostgreSQL.
+
+```typescript
+import { DrizzlePgCompiler } from '@qbjs/core';
+
+const compiler = new DrizzlePgCompiler();
+const result = compiler.compile(ast, usersTable);
+```
+
+#### compile Method
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `ast` | `QueryAST` | Yes | The QueryAST to compile |
+| `table` | `PgTable` | Yes | The Drizzle PostgreSQL table schema |
+
+Returns `CompilerResult<DrizzlePgQuery>`.
+
+### DrizzlePgQuery
+
+Result type for PostgreSQL compilation.
+
+```typescript
+interface DrizzlePgQuery {
+  columns: Record<string, boolean> | undefined;
+  limit: number;
+  offset: number;
+  orderBy: (ReturnType<typeof asc> | ReturnType<typeof desc>)[];
+  where: ReturnType<typeof and> | ReturnType<typeof eq> | undefined;
+}
+```
+
+### Helper Functions
+
+#### compileFields
+
+```typescript
+import { compileFields } from '@qbjs/core';
+
+const columns = compileFields(['id', 'name'], usersTable, errors, warnings);
+// { id: true, name: true }
+```
+
+#### compilePagination
+
+```typescript
+import { compilePagination } from '@qbjs/core';
+
+const { limit, offset } = compilePagination({ offset: 10, limit: 20 });
+```
+
+#### compileSort
+
+```typescript
+import { compileSort } from '@qbjs/core';
+
+const orderBy = compileSort(
+  [{ field: 'createdAt', direction: 'desc' }],
+  usersTable,
+  errors
+);
+```
+
+#### compileFilter
+
+```typescript
+import { compileFilter } from '@qbjs/core';
+
+const where = compileFilter(filterNode, usersTable, errors);
+```
+
+## MySQL Compiler
+
+### createDrizzleMySqlCompiler
+
+Create a new Drizzle MySQL compiler instance.
+
+```typescript
+import { createDrizzleMySqlCompiler } from '@qbjs/core';
+
+const compiler = createDrizzleMySqlCompiler();
+```
+
+### DrizzleMySqlCompiler
+
+Class that compiles QueryAST into Drizzle ORM queries optimized for MySQL. Uses `LOWER()` function for case-insensitive operations instead of `ilike`.
+
+```typescript
+import { DrizzleMySqlCompiler } from '@qbjs/core';
+
+const compiler = new DrizzleMySqlCompiler();
+const result = compiler.compile(ast, usersTable);
+```
+
+#### compile Method
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `ast` | `QueryAST` | Yes | The QueryAST to compile |
+| `table` | `MySqlTable` | Yes | The Drizzle MySQL table schema |
+
+Returns `CompilerResult<DrizzleMySqlQuery>`.
+
+### DrizzleMySqlQuery
+
+Result type for MySQL compilation.
+
+```typescript
+interface DrizzleMySqlQuery {
+  columns: Record<string, boolean> | undefined;
+  limit: number;
+  offset: number;
+  orderBy: (ReturnType<typeof asc> | ReturnType<typeof desc>)[];
+  where: ReturnType<typeof and> | ReturnType<typeof eq> | undefined;
+}
+```
+
+### Helper Functions
+
+#### compileMySqlFields
+
+```typescript
+import { compileMySqlFields } from '@qbjs/core';
+
+const columns = compileMySqlFields(['id', 'name'], usersTable, errors, warnings);
+```
+
+#### compileMySqlPagination
+
+```typescript
+import { compileMySqlPagination } from '@qbjs/core';
+
+const { limit, offset } = compileMySqlPagination({ offset: 10, limit: 20 });
+```
+
+#### compileMySqlSort
+
+```typescript
+import { compileMySqlSort } from '@qbjs/core';
+
+const orderBy = compileMySqlSort(
+  [{ field: 'createdAt', direction: 'desc' }],
+  usersTable,
+  errors
+);
+```
+
+#### compileMySqlFilter
+
+```typescript
+import { compileMySqlFilter } from '@qbjs/core';
+
+const where = compileMySqlFilter(filterNode, usersTable, errors);
+```
+
+## SQLite Compiler
+
+### createDrizzleSQLiteCompiler
+
+Create a new Drizzle SQLite compiler instance.
+
+```typescript
+import { createDrizzleSQLiteCompiler } from '@qbjs/core';
+
+const compiler = createDrizzleSQLiteCompiler();
+```
+
+### DrizzleSQLiteCompiler
+
+Class that compiles QueryAST into Drizzle ORM queries optimized for SQLite. Uses `LOWER()` function for case-insensitive operations instead of `ilike`.
+
+```typescript
+import { DrizzleSQLiteCompiler } from '@qbjs/core';
+
+const compiler = new DrizzleSQLiteCompiler();
+const result = compiler.compile(ast, usersTable);
+```
+
+#### compile Method
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `ast` | `QueryAST` | Yes | The QueryAST to compile |
+| `table` | `SQLiteTable` | Yes | The Drizzle SQLite table schema |
+
+Returns `CompilerResult<DrizzleSQLiteQuery>`.
+
+### DrizzleSQLiteQuery
+
+Result type for SQLite compilation.
+
+```typescript
+interface DrizzleSQLiteQuery {
+  columns: Record<string, boolean> | undefined;
+  limit: number;
+  offset: number;
+  orderBy: (ReturnType<typeof asc> | ReturnType<typeof desc>)[];
+  where: ReturnType<typeof and> | ReturnType<typeof eq> | undefined;
+}
+```
+
+### Helper Functions
+
+#### compileSQLiteFields
+
+```typescript
+import { compileSQLiteFields } from '@qbjs/core';
+
+const columns = compileSQLiteFields(['id', 'name'], usersTable, errors, warnings);
+```
+
+#### compileSQLitePagination
+
+```typescript
+import { compileSQLitePagination } from '@qbjs/core';
+
+const { limit, offset } = compileSQLitePagination({ offset: 10, limit: 20 });
+```
+
+#### compileSQLiteSort
+
+```typescript
+import { compileSQLiteSort } from '@qbjs/core';
+
+const orderBy = compileSQLiteSort(
+  [{ field: 'createdAt', direction: 'desc' }],
+  usersTable,
+  errors
+);
+```
+
+#### compileSQLiteFilter
+
+```typescript
+import { compileSQLiteFilter } from '@qbjs/core';
+
+const where = compileSQLiteFilter(filterNode, usersTable, errors);
+```
+
+## QueryCompiler Interface
+
+All compilers implement the `QueryCompiler` interface.
+
+```typescript
+interface QueryCompiler<TTable, TQuery> {
+  compile(ast: QueryAST, table: TTable): CompilerResult<TQuery>;
+}
+```
+
+## CompilerResult
+
+Result type returned by all compilers.
+
+```typescript
+interface CompilerResult<T> {
+  query: T | null;
+  errors: CompileError[];
+  warnings: CompileWarning[];
+}
+```
+
+## Error Types
+
+### CompileError
+
+```typescript
+interface CompileError {
+  code: CompileErrorCode;
+  field: string;
+  message: string;
+}
+
+type CompileErrorCode = 'UNKNOWN_COLUMN' | 'TYPE_MISMATCH' | 'UNSUPPORTED_OPERATOR';
+```
+
+### CompileWarning
+
+```typescript
+interface CompileWarning {
+  code: CompileWarningCode;
+  field: string;
+  message: string;
+  suggestion?: string;
+}
+
+type CompileWarningCode = 'COLUMN_IGNORED' | 'OPERATOR_FALLBACK' | 'PERFORMANCE_HINT';
+```
+
+## Database-Specific Differences
+
+### Case-Insensitive Operations
+
+| Database | Implementation |
+|----------|----------------|
+| PostgreSQL | Uses `ilike` and `not ilike` |
+| MySQL | Uses `LOWER()` function |
+| SQLite | Uses `LOWER()` function |
+
+### Supported Operators
+
+All compilers support the same set of filter operators:
+
+| Operator | Description |
+|----------|-------------|
+| `eq` | Equal |
+| `eqi` | Equal (case-insensitive) |
+| `ne` | Not equal |
+| `nei` | Not equal (case-insensitive) |
+| `lt` | Less than |
+| `lte` | Less than or equal |
+| `gt` | Greater than |
+| `gte` | Greater than or equal |
+| `in` | In array |
+| `notIn` | Not in array |
+| `contains` | Contains substring |
+| `containsi` | Contains substring (case-insensitive) |
+| `notContains` | Does not contain substring |
+| `notContainsi` | Does not contain substring (case-insensitive) |
+| `startsWith` | Starts with |
+| `endsWith` | Ends with |
+| `null` | Is null |
+| `notNull` | Is not null |
+| `between` | Between two values |
+
+## Complete Example
+
+```typescript
+import { 
+  parse, 
+  createDrizzlePgCompiler,
+  createDrizzleMySqlCompiler,
+  createDrizzleSQLiteCompiler 
+} from '@qbjs/core';
+
+// Parse the query
+const parseResult = parse({
+  fields: 'id,name,email',
+  page: '1',
+  limit: '10',
+  sort: 'createdAt:desc',
+  filter: { status: { eq: 'active' } }
+});
+
+if (parseResult.ast) {
+  // PostgreSQL
+  const pgCompiler = createDrizzlePgCompiler();
+  const pgResult = pgCompiler.compile(parseResult.ast, pgUsersTable);
+
+  // MySQL
+  const mysqlCompiler = createDrizzleMySqlCompiler();
+  const mysqlResult = mysqlCompiler.compile(parseResult.ast, mysqlUsersTable);
+
+  // SQLite
+  const sqliteCompiler = createDrizzleSQLiteCompiler();
+  const sqliteResult = sqliteCompiler.compile(parseResult.ast, sqliteUsersTable);
+}
+```

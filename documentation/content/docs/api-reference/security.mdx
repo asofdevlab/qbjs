@@ -1,0 +1,356 @@
+---
+title: Security
+description: API reference for security configuration and validation functions
+---
+
+The security module provides configuration types and validation functions to protect your API from malicious queries.
+
+## SecurityConfig
+
+Configuration type for query validation.
+
+```typescript
+interface SecurityConfig {
+  allowedFields?: string[];
+  allowedRelations?: string[];
+  maxLimit?: number;
+  operators?: FilterOperator[];
+  defaultLimit?: number;
+  defaultPage?: number;
+}
+```
+
+### Properties
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `allowedFields` | `string[]` | `[]` | Fields allowed to be queried. Empty array means all fields allowed. |
+| `allowedRelations` | `string[]` | `[]` | Relations allowed to be joined. Empty array means all relations allowed. |
+| `maxLimit` | `number` | `100` | Maximum limit for pagination. Queries exceeding this will be capped. |
+| `operators` | `FilterOperator[]` | All operators | Filter operators that are allowed. |
+| `defaultLimit` | `number` | `10` | Default limit when not specified in query. |
+| `defaultPage` | `number` | `1` | Default page when not specified in query. |
+
+### Example
+
+```typescript
+import { createQueryBuilder, createDrizzlePgCompiler } from '@qbjs/core';
+
+const builder = createQueryBuilder({
+  config: {
+    allowedFields: ['id', 'name', 'email', 'createdAt'],
+    maxLimit: 50,
+    operators: ['eq', 'ne', 'contains', 'containsi', 'gt', 'lt', 'gte', 'lte'],
+    defaultLimit: 20,
+  },
+  compiler: createDrizzlePgCompiler(),
+});
+```
+
+## DEFAULT_SECURITY_CONFIG
+
+Default security configuration with sensible defaults.
+
+```typescript
+const DEFAULT_SECURITY_CONFIG: ResolvedSecurityConfig = {
+  allowedFields: [],      // Empty means all fields allowed
+  allowedRelations: [],   // Empty means all relations allowed
+  maxLimit: 100,
+  operators: [...FILTER_OPERATORS], // All operators allowed
+  defaultLimit: 10,
+  defaultPage: 1,
+};
+```
+
+## resolveSecurityConfig
+
+Merge user-provided security config with defaults.
+
+```typescript
+import { resolveSecurityConfig } from '@qbjs/core';
+
+const config = resolveSecurityConfig({
+  allowedFields: ['id', 'name'],
+  maxLimit: 50,
+});
+
+console.log(config.allowedFields);  // ['id', 'name']
+console.log(config.maxLimit);       // 50
+console.log(config.defaultLimit);   // 10 (from defaults)
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `config` | `SecurityConfig` | No | User-provided partial security config |
+
+### Returns
+
+Returns `ResolvedSecurityConfig` with all defaults applied.
+
+## Validation Functions
+
+### validateSecurity
+
+Main entry point for security validation. Validates a QueryAST against security configuration.
+
+```typescript
+import { validateSecurity } from '@qbjs/core';
+
+const result = validateSecurity(ast, {
+  allowedFields: ['id', 'name', 'email'],
+  maxLimit: 50,
+});
+
+if (!result.valid) {
+  console.log(result.errors);
+}
+
+// Use the potentially modified AST (e.g., with capped limit)
+const validatedAst = result.ast;
+```
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `ast` | `QueryAST \| null` | Yes | The QueryAST to validate |
+| `config` | `SecurityConfig` | No | Security configuration (uses defaults if not provided) |
+
+#### Returns
+
+```typescript
+interface SecurityValidationResult {
+  valid: boolean;
+  errors: SecurityError[];
+  warnings: SecurityWarning[];
+  ast: QueryAST | null;
+}
+```
+
+### validateFields
+
+Validate that requested fields are allowed by the security config.
+
+```typescript
+import { validateFields } from '@qbjs/core';
+
+const errors = validateFields(
+  ['id', 'name', 'password'],  // requested fields
+  ['id', 'name', 'email']      // allowed fields
+);
+
+// errors will contain an error for 'password'
+```
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `fields` | `string[] \| null` | Yes | Array of field names to validate |
+| `allowedFields` | `string[]` | Yes | Array of allowed field names (empty means all allowed) |
+
+#### Returns
+
+Returns `SecurityError[]` for disallowed fields.
+
+### validateLimit
+
+Validate and cap the limit against maxLimit.
+
+```typescript
+import { validateLimit } from '@qbjs/core';
+
+const { limit, warning } = validateLimit(200, 100);
+
+console.log(limit);    // 100 (capped)
+console.log(warning);  // SecurityWarning about capping
+```
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `limit` | `number` | Yes | The requested limit |
+| `maxLimit` | `number` | Yes | The maximum allowed limit |
+
+#### Returns
+
+```typescript
+{ limit: number; warning: SecurityWarning | null }
+```
+
+### validateOperators
+
+Validate that filter operators are allowed by the security config.
+
+```typescript
+import { validateOperators } from '@qbjs/core';
+
+const errors = validateOperators(
+  filterNode,
+  ['eq', 'ne', 'contains']  // allowed operators
+);
+```
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `filter` | `FilterNode \| null` | Yes | The filter node to validate |
+| `allowedOperators` | `FilterOperator[]` | Yes | Array of allowed operators |
+| `path` | `string[]` | No | Current path for error reporting |
+
+#### Returns
+
+Returns `SecurityError[]` for disallowed operators.
+
+### validateFilterFields
+
+Validate filter fields against allowed fields.
+
+```typescript
+import { validateFilterFields } from '@qbjs/core';
+
+const errors = validateFilterFields(
+  filterNode,
+  ['id', 'name', 'email']  // allowed fields
+);
+```
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `filter` | `FilterNode \| null` | Yes | The filter node to validate |
+| `allowedFields` | `string[]` | Yes | Array of allowed field names (empty means all allowed) |
+| `path` | `string[]` | No | Current path for error reporting |
+
+#### Returns
+
+Returns `SecurityError[]` for disallowed fields.
+
+### validateSortFields
+
+Validate sort fields against allowed fields.
+
+```typescript
+import { validateSortFields } from '@qbjs/core';
+
+const errors = validateSortFields(
+  [{ field: 'createdAt', direction: 'desc' }],
+  ['id', 'name', 'createdAt']  // allowed fields
+);
+```
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `sort` | `SortSpec[]` | Yes | Array of sort specifications |
+| `allowedFields` | `string[]` | Yes | Array of allowed field names (empty means all allowed) |
+
+#### Returns
+
+Returns `SecurityError[]` for disallowed fields.
+
+### extractFilterFields
+
+Extract all field names referenced in a filter.
+
+```typescript
+import { extractFilterFields } from '@qbjs/core';
+
+const fields = extractFilterFields(filterNode);
+// ['status', 'title', 'createdAt']
+```
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `filter` | `FilterNode \| null` | Yes | The filter node to extract fields from |
+
+#### Returns
+
+Returns `string[]` - array of unique field names.
+
+## Error Types
+
+### SecurityError
+
+```typescript
+interface SecurityError {
+  code: 'FIELD_NOT_ALLOWED' | 'OPERATOR_NOT_ALLOWED' | 'LIMIT_EXCEEDED';
+  field: string;
+  message: string;
+  path: string[];
+}
+```
+
+### SecurityWarning
+
+```typescript
+interface SecurityWarning {
+  code: 'LIMIT_CAPPED';
+  field: string;
+  message: string;
+  originalValue: number;
+  cappedValue: number;
+}
+```
+
+## Complete Example
+
+```typescript
+import { 
+  parse, 
+  validateSecurity,
+  createQueryBuilder,
+  createDrizzlePgCompiler 
+} from '@qbjs/core';
+
+// Option 1: Manual validation
+const parseResult = parse({
+  fields: 'id,name,password',
+  filter: { status: { eq: 'active' } },
+  limit: '200'
+});
+
+const securityResult = validateSecurity(parseResult.ast, {
+  allowedFields: ['id', 'name', 'email', 'status'],
+  maxLimit: 100,
+  operators: ['eq', 'ne', 'contains']
+});
+
+if (!securityResult.valid) {
+  console.log('Security errors:', securityResult.errors);
+  // [{ code: 'FIELD_NOT_ALLOWED', field: 'password', ... }]
+}
+
+if (securityResult.warnings.length > 0) {
+  console.log('Security warnings:', securityResult.warnings);
+  // [{ code: 'LIMIT_CAPPED', originalValue: 200, cappedValue: 100, ... }]
+}
+
+// Option 2: Automatic validation via QueryBuilder
+const builder = createQueryBuilder({
+  config: {
+    allowedFields: ['id', 'name', 'email', 'status'],
+    maxLimit: 100,
+    operators: ['eq', 'ne', 'contains']
+  },
+  compiler: createDrizzlePgCompiler()
+});
+
+// Security validation is applied automatically
+const result = builder.parse({
+  fields: 'id,name,password',
+  filter: { status: { eq: 'active' } },
+  limit: '200'
+});
+
+// result.errors will contain security errors
+// result.warnings will contain security warnings
+```

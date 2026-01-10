@@ -1,0 +1,14 @@
+{
+	"eslint.workingDirectories": [
+		{
+			"mode": "auto"
+		}
+	],
+	"editor.codeActionsOnSave": {
+		"source.organizeImports.biome": "explicit",
+		"source.fixAll.biome": "explicit",
+		"source.addMissingImports.ts": "always",
+		"source.removeUnusedImports": "always"
+	},
+	"typescript.tsdk": "node_modules/typescript/lib"
+}

@@ -1,0 +1,323 @@
+---
+title: Parser
+description: How qbjs transforms query strings into AST
+---
+
+# Parser
+
+The parser is the first stage of the qbjs pipeline. It transforms raw query strings into a structured QueryAST that compilers can understand.
+
+## Overview
+
+The parser handles four types of query parameters:
+
+- **fields**: Column selection
+- **page/limit**: Pagination
+- **sort**: Ordering
+- **filter**: Conditions
+
+## Parsing Functions
+
+### parse()
+
+The main entry point for parsing query parameters:
+
+```typescript
+import { parse } from "@qbjs/core";
+
+const result = parse({
+  fields: "id,name,email",
+  page: "2",
+  limit: "10",
+  sort: "createdAt:desc",
+  filter: { status: { eq: "active" } }
+});
+
+if (result.errors.length === 0) {
+  // Use result.ast
+}
+```
+
+### parseQueryString()
+
+Parse a raw query string directly:
+
+```typescript
+import { parseQueryString } from "@qbjs/core";
+
+const result = parseQueryString(
+  "fields=id,name&page=2&limit=10&sort=createdAt:desc&filter[status][eq]=active"
+);
+```
+
+### parseFromUrl()
+
+Extract and parse query parameters from a full URL:
+
+```typescript
+import { parseFromUrl } from "@qbjs/core";
+
+const result = parseFromUrl(
+  "https://api.example.com/posts?filter[title][containsi]=typescript&page=1&limit=10"
+);
+```
+
+## Query String Format
+
+### Fields
+
+Comma-separated list of field names:
+
+```
+fields=id,name,email
+fields=title,content,createdAt,author
+```
+
+### Pagination
+
+Page number (1-based) and items per page:
+
+```
+page=1&limit=10
+page=3&limit=25
+```
+
+Defaults:
+- `page`: 1
+- `limit`: 10
+
+### Sort
+
+Field name with optional direction (`:asc` or `:desc`):
+
+```
+sort=createdAt:desc
+sort=name:asc
+sort=status:asc,createdAt:desc
+```
+
+Default direction is `asc` if not specified:
+
+```
+sort=name          # Same as sort=name:asc
+```
+
+### Filter
+
+Filters use bracket notation following the [qs](https://github.com/ljharb/qs) library format:
+
+```
+filter[field][operator]=value
+```
+
+#### Simple Filters
+
+```
+filter[status][eq]=active
+filter[age][gt]=18
+filter[title][containsi]=typescript
+```
+
+#### Multiple Conditions (Implicit AND)
+
+Multiple filters on different fields are combined with AND:
+
+```
+filter[status][eq]=active&filter[role][eq]=admin
+```
+
+This creates:
+```typescript
+{
+  type: "logical",
+  operator: "and",
+  conditions: [
+    { type: "field", field: "status", operator: "eq", value: "active" },
+    { type: "field", field: "role", operator: "eq", value: "admin" }
+  ]
+}
+```
+
+#### Explicit Logical Operators
+
+Use `and`, `or`, or `not` for explicit logical grouping:
+
+```
+filter[or][0][status][eq]=published
+filter[or][1][status][eq]=draft
+```
+
+This creates:
+```typescript
+{
+  type: "logical",
+  operator: "or",
+  conditions: [
+    { type: "field", field: "status", operator: "eq", value: "published" },
+    { type: "field", field: "status", operator: "eq", value: "draft" }
+  ]
+}
+```
+
+#### Complex Nested Filters
+
+Combine logical operators for complex queries:
+
+```
+filter[and][0][or][0][status][eq]=published
+filter[and][0][or][1][status][eq]=draft
+filter[and][1][title][containsi]=typescript
+```
+
+This creates: `(status = "published" OR status = "draft") AND title CONTAINS "typescript"`
+
+#### Array Values
+
+For `in` and `notIn` operators:
+
+```
+filter[status][in][0]=active
+filter[status][in][1]=pending
+filter[status][in][2]=review
+```
+
+Or using comma-separated values:
+
+```
+filter[status][in]=active,pending,review
+```
+
+#### Between Operator
+
+```
+filter[price][between][0]=10
+filter[price][between][1]=100
+```
+
+## Parser Result
+
+The parser returns a `ParserResult` object:
+
+```typescript
+interface ParserResult {
+  ast: QueryAST | null;
+  errors: ParseError[];
+  warnings: ParseWarning[];
+}
+```
+
+### Handling Errors
+
+Always check for errors before using the AST:
+
+```typescript
+const result = parseQueryString(queryString);
+
+if (result.errors.length > 0) {
+  // Handle errors
+  for (const error of result.errors) {
+    console.error(`${error.code}: ${error.message} at ${error.field}`);
+  }
+  return { error: "Invalid query parameters" };
+}
+
+// Safe to use result.ast
+```
+
+### Error Codes
+
+| Code | Description |
+|------|-------------|
+| `INVALID_FIELD` | Invalid field name |
+| `INVALID_OPERATOR` | Unknown filter operator |
+| `INVALID_VALUE` | Invalid value for operator |
+| `EXCEEDED_LIMIT` | Value exceeds configured limit |
+| `SECURITY_VIOLATION` | Security rule violated |
+
+### Warnings
+
+Warnings indicate non-fatal issues:
+
+```typescript
+if (result.warnings.length > 0) {
+  for (const warning of result.warnings) {
+    console.warn(`${warning.code}: ${warning.message}`);
+    if (warning.suggestion) {
+      console.warn(`  Suggestion: ${warning.suggestion}`);
+    }
+  }
+}
+```
+
+## Individual Parse Functions
+
+For more control, use individual parsing functions:
+
+### parseFields()
+
+```typescript
+import { parseFields } from "@qbjs/core";
+
+parseFields("id,name,email");  // ["id", "name", "email"]
+parseFields("");               // null
+parseFields(undefined);        // null
+```
+
+### parsePagination()
+
+```typescript
+import { parsePagination } from "@qbjs/core";
+
+parsePagination("2", "10");        // { offset: 10, limit: 10 }
+parsePagination(undefined, "20");  // { offset: 0, limit: 20 }
+parsePagination("3", undefined);   // { offset: 20, limit: 10 }
+```
+
+### parseSort()
+
+```typescript
+import { parseSort } from "@qbjs/core";
+
+parseSort("createdAt:desc");           // [{ field: "createdAt", direction: "desc" }]
+parseSort("name:asc,createdAt:desc");  // [{ field: "name", direction: "asc" }, { field: "createdAt", direction: "desc" }]
+parseSort("name");                     // [{ field: "name", direction: "asc" }]
+```
+
+### parseFilter()
+
+```typescript
+import { parseFilter } from "@qbjs/core";
+
+const errors = [];
+const filter = parseFilter({ status: { eq: "active" } }, errors);
+// { type: "field", field: "status", operator: "eq", value: "active" }
+```
+
+## Integration with Hono
+
+Here's how to use the parser with Hono:
+
+```typescript
+import { Hono } from "hono";
+import { parseQueryString } from "@qbjs/core";
+
+const app = new Hono();
+
+app.get("/posts", async (c) => {
+  const url = new URL(c.req.url);
+  const result = parseQueryString(url.search);
+  
+  if (result.errors.length > 0) {
+    return c.json({ errors: result.errors }, 400);
+  }
+  
+  // Use result.ast with a compiler
+  // ...
+});
+```
+
+## Next Steps
+
+- Learn about the [QueryAST structure](/docs/core-concepts/query-ast)
+- See [how compilers use the AST](/docs/core-concepts/compilers)
+- Explore [filtering in depth](/docs/guides/filtering)

@@ -1,0 +1,313 @@
+---
+title: Parser
+description: API reference for parsing functions that transform query strings into AST
+---
+
+The parser module provides functions to parse QS-formatted query strings into a stable AST representation. The parser is ORM-agnostic and database-agnostic.
+
+## parse
+
+Main entry point for parsing query parameters into an AST.
+
+```typescript
+import { parse } from '@qbjs/core';
+
+const result = parse({
+  fields: 'id,name,email',
+  page: '2',
+  limit: '10',
+  sort: 'createdAt:desc',
+  filter: { status: { eq: 'active' } }
+});
+
+if (result.errors.length === 0) {
+  console.log(result.ast);
+}
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `input` | `QueryInput` | Yes | Query input object |
+| `input.fields` | `string \| null` | No | Comma-separated field names to select |
+| `input.page` | `string \| number \| null` | No | Page number (1-based) |
+| `input.limit` | `string \| number \| null` | No | Number of items per page |
+| `input.sort` | `string \| null` | No | Sort specification |
+| `input.filter` | `unknown` | No | Filter object from QS parsing |
+
+### Returns
+
+```typescript
+interface ParserResult {
+  ast: QueryAST | null;
+  errors: ParseError[];
+  warnings: ParseWarning[];
+}
+```
+
+## parseQueryString
+
+Parse a raw query string using the qs library format. Supports bracket notation for filters.
+
+```typescript
+import { parseQueryString } from '@qbjs/core';
+
+const result = parseQueryString(
+  'fields=id,name&page=2&limit=10&sort=createdAt:desc&filter[status][eq]=active'
+);
+
+// Also works with leading ?
+const result2 = parseQueryString(
+  '?fields=id,name&filter[title][containsi]=typescript'
+);
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `queryString` | `string` | Yes | Raw query string (with or without leading `?`) |
+
+### Returns
+
+Returns `ParserResult` with the AST, errors, and warnings.
+
+## parseFromUrl
+
+Parse a full URL and extract query parameters into a QueryAST.
+
+```typescript
+import { parseFromUrl } from '@qbjs/core';
+
+const result = parseFromUrl(
+  'http://localhost:8787/api/posts?filter[title][containsi]=typescript&page=1&limit=10'
+);
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `url` | `string` | Yes | Full URL string |
+
+### Returns
+
+Returns `ParserResult` with the AST, errors, and warnings.
+
+## parseFields
+
+Parse a comma-separated fields string into an array of field names.
+
+```typescript
+import { parseFields } from '@qbjs/core';
+
+parseFields('id,name,email');     // ['id', 'name', 'email']
+parseFields('');                   // null
+parseFields(undefined);            // null
+parseFields('  id , name  ');      // ['id', 'name']
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `fieldsParam` | `string \| undefined \| null` | No | Comma-separated field names |
+
+### Returns
+
+Returns `string[] | null` - array of field names or null if no fields specified.
+
+## parsePagination
+
+Parse page and limit parameters into offset-based pagination.
+
+```typescript
+import { parsePagination } from '@qbjs/core';
+
+parsePagination('2', '10');        // { offset: 10, limit: 10 }
+parsePagination(2, 10);            // { offset: 10, limit: 10 }
+parsePagination(undefined, '20');  // { offset: 0, limit: 20 }
+parsePagination(undefined, undefined); // { offset: 0, limit: 10 }
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `pageParam` | `string \| number \| undefined \| null` | No | Page number (1-based) |
+| `limitParam` | `string \| number \| undefined \| null` | No | Number of items per page |
+
+### Returns
+
+```typescript
+interface Pagination {
+  offset: number;
+  limit: number;
+}
+```
+
+### Default Values
+
+- Default page: `1`
+- Default limit: `10`
+
+## parseSort
+
+Parse a sort string into an array of SortSpec objects.
+
+```typescript
+import { parseSort } from '@qbjs/core';
+
+parseSort('createdAt:desc');
+// [{ field: 'createdAt', direction: 'desc' }]
+
+parseSort('name:asc,createdAt:desc');
+// [{ field: 'name', direction: 'asc' }, { field: 'createdAt', direction: 'desc' }]
+
+parseSort('name');
+// [{ field: 'name', direction: 'asc' }]  // defaults to asc
+
+parseSort('');
+// []
+
+parseSort(undefined);
+// []
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `sortParam` | `string \| undefined \| null` | No | Sort string |
+
+### Returns
+
+Returns `SortSpec[]` - array of sort specifications.
+
+```typescript
+interface SortSpec {
+  field: string;
+  direction: 'asc' | 'desc';
+}
+```
+
+## parseFilter
+
+Parse a filter object from QS format into a FilterNode.
+
+```typescript
+import { parseFilter } from '@qbjs/core';
+
+// Simple field filter
+const result1 = parseFilter({ title: { eq: 'hello' } });
+// { type: 'field', field: 'title', operator: 'eq', value: 'hello' }
+
+// Multiple conditions (implicit AND)
+const result2 = parseFilter({
+  title: { eq: 'hello' },
+  status: { eq: 'active' }
+});
+// { type: 'logical', operator: 'and', conditions: [...] }
+
+// Explicit logical operators
+const result3 = parseFilter({
+  or: [
+    { title: { containsi: 'typescript' } },
+    { title: { containsi: 'javascript' } }
+  ]
+});
+// { type: 'logical', operator: 'or', conditions: [...] }
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `filterObj` | `unknown` | Yes | Parsed QS filter object |
+| `errors` | `ParseError[]` | No | Array to collect parse errors |
+| `path` | `string[]` | No | Current path for error reporting |
+
+### Returns
+
+Returns `FilterNode | null` - the parsed filter node or null if no valid filter.
+
+## Error Types
+
+### ParseError
+
+```typescript
+interface ParseError {
+  code: 'INVALID_FIELD' | 'INVALID_OPERATOR' | 'INVALID_VALUE' | 'EXCEEDED_LIMIT' | 'SECURITY_VIOLATION';
+  field: string;
+  message: string;
+  path: string[];
+}
+```
+
+### ParseWarning
+
+```typescript
+interface ParseWarning {
+  code: 'FIELD_IGNORED' | 'LIMIT_CAPPED' | 'DEFAULT_APPLIED';
+  field: string;
+  message: string;
+  suggestion?: string;
+}
+```
+
+## Constants
+
+### DEFAULT_PAGINATION
+
+Default pagination values used when not specified.
+
+```typescript
+const DEFAULT_PAGINATION: Pagination = {
+  offset: 0,
+  limit: 10,
+};
+```
+
+### DEFAULT_PAGE
+
+Default page number.
+
+```typescript
+const DEFAULT_PAGE = 1;
+```
+
+## Complete Example
+
+```typescript
+import { parse, parseQueryString, parseFromUrl } from '@qbjs/core';
+
+// Method 1: Parse from object
+const result1 = parse({
+  fields: 'id,title,content',
+  page: '1',
+  limit: '20',
+  sort: 'createdAt:desc',
+  filter: {
+    and: [
+      { status: { eq: 'published' } },
+      { title: { containsi: 'typescript' } }
+    ]
+  }
+});
+
+// Method 2: Parse from query string
+const result2 = parseQueryString(
+  'fields=id,title&page=1&limit=20&sort=createdAt:desc&filter[status][eq]=published'
+);
+
+// Method 3: Parse from full URL
+const result3 = parseFromUrl(
+  'http://api.example.com/posts?fields=id,title&filter[status][eq]=published'
+);
+
+// All methods return the same ParserResult structure
+console.log(result1.ast);
+console.log(result1.errors);
+console.log(result1.warnings);
+```

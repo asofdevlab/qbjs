@@ -1,0 +1,316 @@
+---
+title: Security Configuration
+description: Learn how to secure your API queries with qbjs security configuration
+---
+
+Security configuration is essential for protecting your API from malicious queries. qbjs provides a comprehensive security layer that validates queries before execution.
+
+## Why Security Matters
+
+Without proper security configuration, API consumers could:
+
+- Access sensitive fields (passwords, internal data)
+- Request excessive amounts of data (DoS attacks)
+- Use expensive filter operators
+- Query unauthorized relations
+
+## Security Configuration Options
+
+```typescript
+interface SecurityConfig {
+  /** Fields that are allowed to be queried. Empty array means all fields allowed. */
+  allowedFields?: string[];
+  /** Relations that are allowed to be joined. Empty array means all relations allowed. */
+  allowedRelations?: string[];
+  /** Maximum limit for pagination. Queries exceeding this will be capped. */
+  maxLimit?: number;
+  /** Filter operators that are allowed. */
+  operators?: FilterOperator[];
+  /** Default limit when not specified in query */
+  defaultLimit?: number;
+  /** Default page when not specified in query */
+  defaultPage?: number;
+}
+```
+
+## Default Configuration
+
+qbjs provides sensible defaults:
+
+```typescript
+const DEFAULT_SECURITY_CONFIG = {
+  allowedFields: [],      // Empty = all fields allowed
+  allowedRelations: [],   // Empty = all relations allowed
+  maxLimit: 100,          // Cap at 100 items per page
+  operators: [            // All operators allowed by default
+    "eq", "eqi", "ne", "nei", "lt", "lte", "gt", "gte",
+    "in", "notIn", "contains", "containsi", "notContains",
+    "notContainsi", "startsWith", "endsWith", "null",
+    "notNull", "between"
+  ],
+  defaultLimit: 10,
+  defaultPage: 1
+};
+```
+
+## Allowed Fields
+
+Restrict which fields can be selected, filtered, or sorted:
+
+```typescript
+import { validateSecurity, parse } from '@qbjs/core';
+
+const securityConfig = {
+  allowedFields: ['id', 'title', 'author', 'createdAt', 'status']
+  // Sensitive fields like 'password', 'internalNotes' are excluded
+};
+
+const result = parse({
+  fields: "id,title,password",  // password is not allowed
+  filter: { internalNotes: { contains: "secret" } }  // not allowed
+});
+
+const validation = validateSecurity(result.ast!, securityConfig);
+
+if (validation.errors.length > 0) {
+  // Handle security violations
+  console.log(validation.errors);
+  // [
+  //   { code: "FIELD_NOT_ALLOWED", field: "password", ... },
+  //   { code: "FIELD_NOT_ALLOWED", field: "internalNotes", ... }
+  // ]
+}
+```
+
+### Field Validation Functions
+
+```typescript
+import { validateFields, validateFilterFields, validateSortFields } from '@qbjs/core';
+
+const config = { allowedFields: ['id', 'title', 'status'] };
+
+// Validate selected fields
+const fieldsResult = validateFields(['id', 'title', 'secret'], config);
+
+// Validate filter fields
+const filterResult = validateFilterFields(filterNode, config);
+
+// Validate sort fields
+const sortResult = validateSortFields(sortSpecs, config);
+```
+
+## Allowed Relations
+
+Control which relations can be joined or populated:
+
+```typescript
+const securityConfig = {
+  allowedRelations: ['author', 'category', 'tags']
+  // Relations like 'internalMetrics', 'auditLog' are excluded
+};
+```
+
+## Maximum Limit
+
+Prevent excessive data retrieval by capping the limit:
+
+```typescript
+import { validateLimit } from '@qbjs/core';
+
+const securityConfig = {
+  maxLimit: 50  // Maximum 50 items per request
+};
+
+const result = parse({ limit: "1000" });  // User requests 1000 items
+
+const validation = validateLimit(result.ast!.pagination.limit, securityConfig);
+
+if (validation.warnings.length > 0) {
+  // Limit was capped
+  console.log(validation.warnings);
+  // [{ code: "LIMIT_CAPPED", message: "Limit capped to 50" }]
+}
+
+// The actual limit used will be 50, not 1000
+```
+
+## Operator Restrictions
+
+Limit which filter operators can be used:
+
+```typescript
+import { validateOperators } from '@qbjs/core';
+
+const securityConfig = {
+  operators: ['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'in']
+  // Expensive operators like 'contains', 'containsi' are excluded
+};
+
+const result = parse({
+  filter: { title: { containsi: "search" } }  // containsi not allowed
+});
+
+const validation = validateOperators(result.ast!.filter!, securityConfig);
+
+if (validation.errors.length > 0) {
+  // Handle operator violation
+  console.log(validation.errors);
+  // [{ code: "OPERATOR_NOT_ALLOWED", field: "title", operator: "containsi" }]
+}
+```
+
+## Complete Security Validation
+
+Use `validateSecurity` for comprehensive validation:
+
+```typescript
+import { validateSecurity, parse } from '@qbjs/core';
+
+const securityConfig = {
+  allowedFields: ['id', 'title', 'author', 'status', 'createdAt'],
+  allowedRelations: ['author', 'category'],
+  maxLimit: 100,
+  operators: ['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'in', 'notIn'],
+  defaultLimit: 20,
+  defaultPage: 1
+};
+
+const result = parse({
+  fields: "id,title,password",
+  filter: { status: { eq: "published" }, secret: { contains: "data" } },
+  sort: "createdAt:desc",
+  limit: "500"
+});
+
+const validation = validateSecurity(result.ast!, securityConfig);
+
+console.log(validation);
+// {
+//   errors: [
+//     { code: "FIELD_NOT_ALLOWED", field: "password" },
+//     { code: "FIELD_NOT_ALLOWED", field: "secret" },
+//     { code: "OPERATOR_NOT_ALLOWED", field: "secret", operator: "contains" }
+//   ],
+//   warnings: [
+//     { code: "LIMIT_CAPPED", message: "Limit capped from 500 to 100" }
+//   ]
+// }
+```
+
+## Using with Query Builder
+
+The query builder integrates security configuration:
+
+```typescript
+import { createQueryBuilder, createDrizzlePgCompiler } from '@qbjs/core';
+import { posts } from './schema';
+
+const builder = createQueryBuilder({
+  compiler: createDrizzlePgCompiler(),
+  config: {
+    allowedFields: ['id', 'title', 'author', 'status', 'createdAt'],
+    maxLimit: 100,
+    defaultLimit: 20
+  }
+});
+
+// Security is automatically applied
+const result = builder.execute(
+  { fields: "id,title,password", limit: "500" },
+  posts
+);
+
+// result.errors contains security violations
+// result.warnings contains security warnings (like limit capping)
+```
+
+## Best Practices
+
+### 1. Always Configure Allowed Fields
+
+```typescript
+// ❌ Bad: All fields exposed
+const config = {};
+
+// ✅ Good: Explicit field allowlist
+const config = {
+  allowedFields: ['id', 'title', 'author', 'status', 'createdAt', 'updatedAt']
+};
+```
+
+### 2. Set Reasonable Limits
+
+```typescript
+// ❌ Bad: No limit or very high limit
+const config = { maxLimit: 10000 };
+
+// ✅ Good: Reasonable limit based on use case
+const config = {
+  maxLimit: 100,
+  defaultLimit: 20
+};
+```
+
+### 3. Restrict Expensive Operators
+
+```typescript
+// For high-traffic endpoints, consider restricting text search operators
+const config = {
+  operators: ['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'in', 'notIn', 'null', 'notNull']
+  // Exclude: contains, containsi, startsWith, endsWith (require full table scans)
+};
+```
+
+### 4. Per-Route Configuration
+
+Different endpoints may need different security settings:
+
+```typescript
+// Public listing endpoint - restrictive
+const publicConfig = {
+  allowedFields: ['id', 'title', 'author', 'createdAt'],
+  maxLimit: 50,
+  operators: ['eq', 'in']
+};
+
+// Admin endpoint - more permissive
+const adminConfig = {
+  allowedFields: ['id', 'title', 'author', 'status', 'internalNotes', 'createdAt'],
+  maxLimit: 200,
+  operators: [...FILTER_OPERATORS]  // All operators
+};
+```
+
+### 5. Handle Validation Errors Gracefully
+
+```typescript
+import { validateSecurity, parse } from '@qbjs/core';
+
+async function handleRequest(query: QueryInput) {
+  const result = parse(query);
+  
+  if (result.errors.length > 0) {
+    return { status: 400, error: "Invalid query", details: result.errors };
+  }
+  
+  const validation = validateSecurity(result.ast!, securityConfig);
+  
+  if (validation.errors.length > 0) {
+    return { status: 403, error: "Security violation", details: validation.errors };
+  }
+  
+  // Proceed with query execution
+  // Note: warnings (like limit capping) are informational, not blocking
+}
+```
+
+## Security Configuration Reference
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `allowedFields` | `string[]` | `[]` | Fields allowed in queries. Empty = all allowed |
+| `allowedRelations` | `string[]` | `[]` | Relations allowed to join. Empty = all allowed |
+| `maxLimit` | `number` | `100` | Maximum items per page |
+| `operators` | `FilterOperator[]` | All operators | Allowed filter operators |
+| `defaultLimit` | `number` | `10` | Default items per page |
+| `defaultPage` | `number` | `1` | Default page number |

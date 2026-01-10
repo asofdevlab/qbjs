@@ -1,0 +1,356 @@
+---
+title: Error Handling
+description: Learn how to handle parsing, compilation, and validation errors in qbjs
+---
+
+qbjs provides comprehensive error handling at every stage of query processing. Understanding these errors helps you build robust APIs that provide helpful feedback to consumers.
+
+## Error Types
+
+qbjs has three categories of errors:
+
+1. **Parse Errors**: Issues with query string syntax
+2. **Compile Errors**: Issues when translating AST to database queries
+3. **Security Errors**: Violations of security configuration
+
+## Parse Errors
+
+Parse errors occur when the query string cannot be properly parsed into an AST.
+
+### Parse Error Codes
+
+| Code | Description |
+|------|-------------|
+| `INVALID_FIELD` | Field name is invalid |
+| `INVALID_OPERATOR` | Filter operator is not recognized |
+| `INVALID_VALUE` | Value format is incorrect |
+| `EXCEEDED_LIMIT` | Query exceeds configured limits |
+| `SECURITY_VIOLATION` | Query violates security rules |
+
+### Handling Parse Errors
+
+```typescript
+import { parse } from '@qbjs/core';
+
+const result = parse({
+  filter: { status: { invalidOp: "value" } }
+});
+
+if (result.errors.length > 0) {
+  console.log(result.errors);
+  // [
+  //   {
+  //     code: "INVALID_OPERATOR",
+  //     field: "filter.status",
+  //     message: "Invalid filter operator: \"invalidOp\"",
+  //     path: ["filter", "status", "invalidOp"]
+  //   }
+  // ]
+}
+
+// AST may be null if errors are critical
+if (result.ast === null) {
+  // Cannot proceed with query
+}
+```
+
+### Parse Warnings
+
+Warnings indicate non-fatal issues:
+
+```typescript
+const result = parse({ page: undefined, limit: "10" });
+
+console.log(result.warnings);
+// [
+//   {
+//     code: "DEFAULT_APPLIED",
+//     field: "page",
+//     message: "Page parameter not provided, defaulting to page 1",
+//     suggestion: "Provide a page parameter for explicit pagination"
+//   }
+// ]
+```
+
+## Compile Errors
+
+Compile errors occur when the AST cannot be translated to a valid database query.
+
+### Compile Error Codes
+
+| Code | Description |
+|------|-------------|
+| `UNKNOWN_COLUMN` | Column doesn't exist in table schema |
+| `TYPE_MISMATCH` | Value type doesn't match column type |
+| `UNSUPPORTED_OPERATOR` | Operator not supported for column type |
+
+### Handling Compile Errors
+
+```typescript
+import { parse, createDrizzlePgCompiler } from '@qbjs/core';
+import { posts } from './schema';
+
+const result = parse({
+  fields: "id,title,nonExistentField",
+  filter: { unknownColumn: { eq: "value" } }
+});
+
+const compiler = createDrizzlePgCompiler();
+const compiled = compiler.compile(result.ast!, posts);
+
+if (compiled.errors.length > 0) {
+  console.log(compiled.errors);
+  // [
+  //   {
+  //     code: "UNKNOWN_COLUMN",
+  //     field: "nonExistentField",
+  //     message: "Column 'nonExistentField' does not exist in table schema"
+  //   },
+  //   {
+  //     code: "UNKNOWN_COLUMN",
+  //     field: "unknownColumn",
+  //     message: "Filter column 'unknownColumn' does not exist in table schema"
+  //   }
+  // ]
+}
+```
+
+### Compile Warnings
+
+```typescript
+const compiled = compiler.compile(result.ast!, posts);
+
+console.log(compiled.warnings);
+// [
+//   {
+//     code: "COLUMN_IGNORED",
+//     field: "fields",
+//     message: "All requested fields were invalid, selecting all columns",
+//     suggestion: "Available columns: id, title, content, status, createdAt"
+//   }
+// ]
+```
+
+## Security Errors
+
+Security errors occur when queries violate security configuration.
+
+### Security Error Codes
+
+| Code | Description |
+|------|-------------|
+| `FIELD_NOT_ALLOWED` | Field is not in allowedFields |
+| `RELATION_NOT_ALLOWED` | Relation is not in allowedRelations |
+| `OPERATOR_NOT_ALLOWED` | Operator is not in allowed operators |
+| `LIMIT_EXCEEDED` | Requested limit exceeds maxLimit |
+
+### Handling Security Errors
+
+```typescript
+import { validateSecurity, parse } from '@qbjs/core';
+
+const securityConfig = {
+  allowedFields: ['id', 'title', 'status'],
+  maxLimit: 50,
+  operators: ['eq', 'ne', 'in']
+};
+
+const result = parse({
+  fields: "id,title,password",
+  filter: { title: { contains: "search" } },
+  limit: "100"
+});
+
+const validation = validateSecurity(result.ast!, securityConfig);
+
+console.log(validation.errors);
+// [
+//   { code: "FIELD_NOT_ALLOWED", field: "password", message: "..." },
+//   { code: "OPERATOR_NOT_ALLOWED", field: "title", operator: "contains", message: "..." }
+// ]
+
+console.log(validation.warnings);
+// [
+//   { code: "LIMIT_CAPPED", message: "Limit capped from 100 to 50" }
+// ]
+```
+
+## Query Error Types
+
+qbjs also provides general query error types for backward compatibility:
+
+```typescript
+type QueryErrorCode =
+  | "INVALID_TYPE"
+  | "INVALID_VALUE"
+  | "MISSING_REQUIRED"
+  | "UNKNOWN_FIELD"
+  | "EXCEEDED_LIMIT"
+  | "MALFORMED_QUERY"
+  | "SECURITY_VIOLATION"
+  | "PARSING_FAILED";
+
+type QueryWarningCode =
+  | "DEPRECATED_FIELD"
+  | "IGNORED_FIELD"
+  | "DEFAULT_APPLIED"
+  | "PERFORMANCE_WARNING";
+```
+
+## Creating Error Responses
+
+qbjs provides utilities for creating standardized error responses:
+
+```typescript
+import { createErrorResponse, createQueryError } from '@qbjs/core';
+
+const errors = [
+  createQueryError(
+    "status",
+    "INVALID_VALUE",
+    "Invalid status value",
+    ["filter", "status"],
+    "invalid",
+    "published | draft | archived"
+  )
+];
+
+const response = createErrorResponse(
+  "Invalid query parameters",
+  "VALIDATION_ERROR",
+  errors,
+  [],  // warnings
+  ["Check the API documentation for valid values"],
+  "req-123",  // requestId
+  5  // parseTime in ms
+);
+
+// Response structure:
+// {
+//   error: "Invalid query parameters",
+//   code: "VALIDATION_ERROR",
+//   details: [...],
+//   warnings: [],
+//   suggestions: ["Check the API documentation for valid values", ...],
+//   metadata: {
+//     timestamp: "2024-01-15T10:30:00.000Z",
+//     requestId: "req-123",
+//     parseTime: 5
+//   }
+// }
+```
+
+## Error Handling Patterns
+
+### Basic Pattern
+
+```typescript
+import { parse, createDrizzlePgCompiler, validateSecurity } from '@qbjs/core';
+
+async function handleQuery(query: QueryInput, table: PgTable) {
+  // 1. Parse
+  const parseResult = parse(query);
+  if (parseResult.errors.length > 0) {
+    return { status: 400, error: "Parse error", details: parseResult.errors };
+  }
+  
+  // 2. Validate security
+  const securityResult = validateSecurity(parseResult.ast!, securityConfig);
+  if (securityResult.errors.length > 0) {
+    return { status: 403, error: "Security violation", details: securityResult.errors };
+  }
+  
+  // 3. Compile
+  const compiler = createDrizzlePgCompiler();
+  const compileResult = compiler.compile(parseResult.ast!, table);
+  if (compileResult.errors.length > 0) {
+    return { status: 400, error: "Compile error", details: compileResult.errors };
+  }
+  
+  // 4. Execute query
+  return { status: 200, data: await executeQuery(compileResult.query) };
+}
+```
+
+### With Query Builder
+
+```typescript
+import { createQueryBuilder, createDrizzlePgCompiler } from '@qbjs/core';
+
+const builder = createQueryBuilder({
+  compiler: createDrizzlePgCompiler(),
+  config: securityConfig
+});
+
+async function handleQuery(query: QueryInput, table: PgTable) {
+  const result = builder.execute(query, table);
+  
+  // All errors (parse, security, compile) are collected
+  if (result.errors.length > 0) {
+    return {
+      status: 400,
+      error: "Query error",
+      details: result.errors,
+      warnings: result.warnings
+    };
+  }
+  
+  return { status: 200, data: await executeQuery(result.query) };
+}
+```
+
+### Hono Integration
+
+```typescript
+import { Hono } from 'hono';
+import { createQueryBuilder, createDrizzlePgCompiler } from '@qbjs/core';
+
+const app = new Hono();
+const builder = createQueryBuilder({
+  compiler: createDrizzlePgCompiler(),
+  config: securityConfig
+});
+
+app.get('/api/posts', async (c) => {
+  const query = c.req.query();
+  const result = builder.execute(query, posts);
+  
+  if (result.errors.length > 0) {
+    return c.json({
+      error: "Invalid query",
+      details: result.errors,
+      warnings: result.warnings
+    }, 400);
+  }
+  
+  const data = await db
+    .select(result.query.columns || posts)
+    .from(posts)
+    .where(result.query.where)
+    .orderBy(...result.query.orderBy)
+    .limit(result.query.limit)
+    .offset(result.query.offset);
+  
+  return c.json({
+    data,
+    warnings: result.warnings  // Include warnings in successful responses
+  });
+});
+```
+
+## Best Practices
+
+1. **Always check for errors**: Never assume parsing or compilation will succeed.
+
+2. **Return helpful error messages**: Include field names, expected values, and suggestions.
+
+3. **Include warnings in responses**: Warnings help API consumers understand query modifications.
+
+4. **Use appropriate HTTP status codes**:
+   - `400` for parse and compile errors
+   - `403` for security violations
+   - `200` with warnings for successful queries with modifications
+
+5. **Log errors for debugging**: Keep server-side logs of errors for troubleshooting.
+
+6. **Validate early**: Check security before compilation to fail fast on unauthorized queries.

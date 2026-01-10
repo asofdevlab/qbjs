@@ -1,0 +1,8 @@
+# deps
+node_modules/
+
+# env
+.env.test
+.env
+.env.production
+.env.documentation

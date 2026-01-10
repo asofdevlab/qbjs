@@ -1,0 +1,521 @@
+---
+title: Types
+description: API reference for TypeScript types and interfaces
+---
+
+This page documents all TypeScript types and interfaces exported by qbjs.
+
+## AST Types
+
+### QueryAST
+
+The main AST structure representing a parsed query. This is the stable contract between parser and compilers.
+
+```typescript
+interface QueryAST {
+  fields: string[] | null;
+  pagination: Pagination;
+  sort: SortSpec[];
+  filter: FilterNode | null;
+}
+```
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `fields` | `string[] \| null` | Fields to select (null means all fields) |
+| `pagination` | `Pagination` | Pagination specification |
+| `sort` | `SortSpec[]` | Sort specifications (empty array means no sorting) |
+| `filter` | `FilterNode \| null` | Filter expression (null means no filtering) |
+
+### Pagination
+
+Pagination specification with offset-based pagination.
+
+```typescript
+interface Pagination {
+  offset: number;
+  limit: number;
+}
+```
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `offset` | `number` | Number of items to skip |
+| `limit` | `number` | Maximum number of items to return |
+
+### SortSpec
+
+Specification for sorting a single field.
+
+```typescript
+interface SortSpec {
+  field: string;
+  direction: SortDirection;
+}
+```
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `field` | `string` | The field name to sort by |
+| `direction` | `SortDirection` | The sort direction (ascending or descending) |
+
+### SortDirection
+
+Sort direction for ordering query results.
+
+```typescript
+type SortDirection = 'asc' | 'desc';
+```
+
+## Filter Types
+
+### FilterNode
+
+A filter node can be either a field filter or a logical filter. This allows for arbitrarily complex filter expressions.
+
+```typescript
+type FilterNode = FieldFilter | LogicalFilter;
+```
+
+### FieldFilter
+
+A filter condition on a specific field.
+
+```typescript
+interface FieldFilter {
+  type: 'field';
+  field: string;
+  operator: FilterOperator;
+  value: unknown;
+}
+```
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `type` | `'field'` | Discriminator for filter node type |
+| `field` | `string` | The field name to filter on |
+| `operator` | `FilterOperator` | The comparison operator |
+| `value` | `unknown` | The value to compare against |
+
+### LogicalFilter
+
+A logical combination of filter conditions.
+
+```typescript
+interface LogicalFilter {
+  type: 'logical';
+  operator: LogicalOperator;
+  conditions: FilterNode[];
+}
+```
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `type` | `'logical'` | Discriminator for filter node type |
+| `operator` | `LogicalOperator` | The logical operator (and, or, not) |
+| `conditions` | `FilterNode[]` | The conditions to combine |
+
+### FilterOperator
+
+Filter operators supported by the query system.
+
+```typescript
+type FilterOperator =
+  | 'eq'
+  | 'eqi'
+  | 'ne'
+  | 'nei'
+  | 'lt'
+  | 'lte'
+  | 'gt'
+  | 'gte'
+  | 'in'
+  | 'notIn'
+  | 'contains'
+  | 'containsi'
+  | 'notContains'
+  | 'notContainsi'
+  | 'startsWith'
+  | 'endsWith'
+  | 'null'
+  | 'notNull'
+  | 'between';
+```
+
+| Operator | Description |
+|----------|-------------|
+| `eq` | Equal |
+| `eqi` | Equal (case-insensitive) |
+| `ne` | Not equal |
+| `nei` | Not equal (case-insensitive) |
+| `lt` | Less than |
+| `lte` | Less than or equal |
+| `gt` | Greater than |
+| `gte` | Greater than or equal |
+| `in` | In array |
+| `notIn` | Not in array |
+| `contains` | Contains substring |
+| `containsi` | Contains substring (case-insensitive) |
+| `notContains` | Does not contain substring |
+| `notContainsi` | Does not contain substring (case-insensitive) |
+| `startsWith` | Starts with |
+| `endsWith` | Ends with |
+| `null` | Is null |
+| `notNull` | Is not null |
+| `between` | Between two values |
+
+### LogicalOperator
+
+Logical operators for combining filter conditions.
+
+```typescript
+type LogicalOperator = 'and' | 'or' | 'not';
+```
+
+## Type Guards
+
+### isFieldFilter
+
+Type guard to check if a FilterNode is a FieldFilter.
+
+```typescript
+function isFieldFilter(node: FilterNode): node is FieldFilter;
+```
+
+### isLogicalFilter
+
+Type guard to check if a FilterNode is a LogicalFilter.
+
+```typescript
+function isLogicalFilter(node: FilterNode): node is LogicalFilter;
+```
+
+### Example
+
+```typescript
+import { isFieldFilter, isLogicalFilter } from '@qbjs/core';
+
+function processFilter(node: FilterNode) {
+  if (isFieldFilter(node)) {
+    console.log(`Field: ${node.field}, Operator: ${node.operator}`);
+  } else if (isLogicalFilter(node)) {
+    console.log(`Logical: ${node.operator}, Conditions: ${node.conditions.length}`);
+  }
+}
+```
+
+## Parser Types
+
+### QueryInput
+
+Input query parameters that can be parsed.
+
+```typescript
+interface QueryInput {
+  fields?: string | null;
+  page?: string | number | null;
+  limit?: string | number | null;
+  sort?: string | null;
+  filter?: unknown;
+}
+```
+
+### ParserResult
+
+Result of parsing a query string.
+
+```typescript
+interface ParserResult {
+  ast: QueryAST | null;
+  errors: ParseError[];
+  warnings: ParseWarning[];
+}
+```
+
+### ParseError
+
+Parse error returned when parsing fails.
+
+```typescript
+interface ParseError {
+  code: 'INVALID_FIELD' | 'INVALID_OPERATOR' | 'INVALID_VALUE' | 'EXCEEDED_LIMIT' | 'SECURITY_VIOLATION';
+  field: string;
+  message: string;
+  path: string[];
+}
+```
+
+### ParseWarning
+
+Parse warning returned for non-fatal issues.
+
+```typescript
+interface ParseWarning {
+  code: 'FIELD_IGNORED' | 'LIMIT_CAPPED' | 'DEFAULT_APPLIED';
+  field: string;
+  message: string;
+  suggestion?: string;
+}
+```
+
+## Compiler Types
+
+### CompilerResult
+
+Result of compiling a QueryAST to an ORM query.
+
+```typescript
+interface CompilerResult<T> {
+  query: T | null;
+  errors: CompileError[];
+  warnings: CompileWarning[];
+}
+```
+
+### CompileError
+
+An error that occurred during compilation.
+
+```typescript
+interface CompileError {
+  code: CompileErrorCode;
+  field: string;
+  message: string;
+}
+
+type CompileErrorCode = 'UNKNOWN_COLUMN' | 'TYPE_MISMATCH' | 'UNSUPPORTED_OPERATOR';
+```
+
+### CompileWarning
+
+A warning that occurred during compilation.
+
+```typescript
+interface CompileWarning {
+  code: CompileWarningCode;
+  field: string;
+  message: string;
+  suggestion?: string;
+}
+
+type CompileWarningCode = 'COLUMN_IGNORED' | 'OPERATOR_FALLBACK' | 'PERFORMANCE_HINT';
+```
+
+### QueryCompiler
+
+Interface for query compilers that transform AST to ORM queries.
+
+```typescript
+interface QueryCompiler<TTable, TQuery> {
+  compile(ast: QueryAST, table: TTable): CompilerResult<TQuery>;
+}
+```
+
+## Security Types
+
+### SecurityConfig
+
+Security configuration for query validation.
+
+```typescript
+interface SecurityConfig {
+  allowedFields?: string[];
+  allowedRelations?: string[];
+  maxLimit?: number;
+  operators?: FilterOperator[];
+  defaultLimit?: number;
+  defaultPage?: number;
+}
+```
+
+### ResolvedSecurityConfig
+
+Fully resolved security configuration with all required fields.
+
+```typescript
+interface ResolvedSecurityConfig {
+  allowedFields: string[];
+  allowedRelations: string[];
+  maxLimit: number;
+  operators: FilterOperator[];
+  defaultLimit: number;
+  defaultPage: number;
+}
+```
+
+### SecurityError
+
+Security validation error.
+
+```typescript
+interface SecurityError {
+  code: 'FIELD_NOT_ALLOWED' | 'OPERATOR_NOT_ALLOWED' | 'LIMIT_EXCEEDED';
+  field: string;
+  message: string;
+  path: string[];
+}
+```
+
+### SecurityWarning
+
+Security validation warning.
+
+```typescript
+interface SecurityWarning {
+  code: 'LIMIT_CAPPED';
+  field: string;
+  message: string;
+  originalValue: number;
+  cappedValue: number;
+}
+```
+
+### SecurityValidationResult
+
+Result of security validation.
+
+```typescript
+interface SecurityValidationResult {
+  valid: boolean;
+  errors: SecurityError[];
+  warnings: SecurityWarning[];
+  ast: QueryAST | null;
+}
+```
+
+## Query Builder Types
+
+### QueryBuilder
+
+Query builder interface that orchestrates parsing, validation, and compilation.
+
+```typescript
+interface QueryBuilder<TTable, TQuery> {
+  parse(input: QueryInput): QueryBuilderParseResult;
+  parseFromUrl(url: string): QueryBuilderParseResult;
+  compile(ast: QueryAST, table: TTable): QueryBuilderCompileResult<TQuery>;
+  execute(input: QueryInput, table: TTable): QueryBuilderExecuteResult<TQuery>;
+  executeFromUrl(url: string, table: TTable): QueryBuilderExecuteResult<TQuery>;
+  getSecurityConfig(): SecurityConfig;
+}
+```
+
+### CreateQueryBuilderOptions
+
+Options for creating a query builder.
+
+```typescript
+interface CreateQueryBuilderOptions<TTable, TQuery> {
+  config?: SecurityConfig;
+  compiler: QueryCompiler<TTable, TQuery>;
+}
+```
+
+### QueryBuilderParseResult
+
+Result of parsing a query through the query builder.
+
+```typescript
+interface QueryBuilderParseResult {
+  ast: QueryAST | null;
+  errors: QueryBuilderError[];
+  warnings: QueryBuilderWarning[];
+}
+```
+
+### QueryBuilderCompileResult
+
+Result of compiling a query through the query builder.
+
+```typescript
+interface QueryBuilderCompileResult<TQuery> {
+  query: TQuery | null;
+  errors: CompileError[];
+  warnings: CompileWarning[];
+}
+```
+
+### QueryBuilderExecuteResult
+
+Result of executing a full query through the query builder.
+
+```typescript
+interface QueryBuilderExecuteResult<TQuery> {
+  query: TQuery | null;
+  ast: QueryAST | null;
+  errors: QueryBuilderError[];
+  warnings: QueryBuilderWarning[];
+}
+```
+
+### QueryBuilderError
+
+Combined error type for query builder operations.
+
+```typescript
+type QueryBuilderError = ParseError | SecurityError | CompileError;
+```
+
+### QueryBuilderWarning
+
+Combined warning type for query builder operations.
+
+```typescript
+type QueryBuilderWarning = ParseWarning | SecurityWarning | CompileWarning;
+```
+
+## Constants
+
+### FILTER_OPERATORS
+
+All supported filter operators as an array for validation.
+
+```typescript
+const FILTER_OPERATORS: readonly FilterOperator[] = [
+  'eq', 'eqi', 'ne', 'nei', 'lt', 'lte', 'gt', 'gte',
+  'in', 'notIn', 'contains', 'containsi', 'notContains', 'notContainsi',
+  'startsWith', 'endsWith', 'null', 'notNull', 'between'
+] as const;
+```
+
+### LOGICAL_OPERATORS
+
+All supported logical operators as an array for validation.
+
+```typescript
+const LOGICAL_OPERATORS: readonly LogicalOperator[] = ['and', 'or', 'not'] as const;
+```
+
+### SORT_DIRECTIONS
+
+All supported sort directions as an array for validation.
+
+```typescript
+const SORT_DIRECTIONS: readonly SortDirection[] = ['asc', 'desc'] as const;
+```
+
+### DEFAULT_PAGINATION
+
+Default pagination values.
+
+```typescript
+const DEFAULT_PAGINATION: Pagination = {
+  offset: 0,
+  limit: 10,
+};
+```
+
+### DEFAULT_SECURITY_CONFIG
+
+Default security configuration.
+
+```typescript
+const DEFAULT_SECURITY_CONFIG: ResolvedSecurityConfig = {
+  allowedFields: [],
+  allowedRelations: [],
+  maxLimit: 100,
+  operators: [...FILTER_OPERATORS],
+  defaultLimit: 10,
+  defaultPage: 1,
+};
+```

@@ -1,0 +1,283 @@
+---
+title: Filtering
+description: Learn how to use filter operators to query your data with qbjs
+---
+
+Filtering allows you to retrieve only the data that matches specific conditions. qbjs supports a comprehensive set of filter operators that work across all supported databases.
+
+## Basic Filter Syntax
+
+Filters use bracket notation in query strings:
+
+```
+filter[fieldName][operator]=value
+```
+
+For example, to find posts with a specific status:
+
+```
+GET /api/posts?filter[status][eq]=published
+```
+
+## Comparison Operators
+
+### Equality Operators
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `eq` | Equal to | `filter[status][eq]=active` |
+| `eqi` | Equal to (case-insensitive) | `filter[name][eqi]=john` |
+| `ne` | Not equal to | `filter[status][ne]=deleted` |
+| `nei` | Not equal to (case-insensitive) | `filter[name][nei]=admin` |
+
+```typescript
+// Query string
+"filter[status][eq]=published"
+
+// Parsed AST filter
+{
+  type: "field",
+  field: "status",
+  operator: "eq",
+  value: "published"
+}
+```
+
+### Numeric Comparison
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `gt` | Greater than | `filter[price][gt]=100` |
+| `gte` | Greater than or equal | `filter[age][gte]=18` |
+| `lt` | Less than | `filter[stock][lt]=10` |
+| `lte` | Less than or equal | `filter[rating][lte]=5` |
+
+```typescript
+// Find products priced between $50 and $200
+"filter[price][gte]=50&filter[price][lte]=200"
+```
+
+### Range Operator
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `between` | Value is between two values | `filter[price][between][0]=10&filter[price][between][1]=100` |
+
+```typescript
+// Query string for between
+"filter[createdAt][between][0]=2024-01-01&filter[createdAt][between][1]=2024-12-31"
+
+// Parsed AST filter
+{
+  type: "field",
+  field: "createdAt",
+  operator: "between",
+  value: ["2024-01-01", "2024-12-31"]
+}
+```
+
+## String Operators
+
+### Contains Operators
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `contains` | Contains substring (case-sensitive) | `filter[title][contains]=typescript` |
+| `containsi` | Contains substring (case-insensitive) | `filter[title][containsi]=TypeScript` |
+| `notContains` | Does not contain (case-sensitive) | `filter[content][notContains]=spam` |
+| `notContainsi` | Does not contain (case-insensitive) | `filter[content][notContainsi]=SPAM` |
+
+```typescript
+// Find posts containing "tutorial" (case-insensitive)
+"filter[title][containsi]=tutorial"
+```
+
+### Pattern Matching
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `startsWith` | Starts with string | `filter[email][startsWith]=admin` |
+| `endsWith` | Ends with string | `filter[email][endsWith]=@company.com` |
+
+```typescript
+// Find users with company email addresses
+"filter[email][endsWith]=@company.com"
+```
+
+## Array Operators
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `in` | Value is in array | `filter[status][in][0]=draft&filter[status][in][1]=review` |
+| `notIn` | Value is not in array | `filter[role][notIn][0]=admin&filter[role][notIn][1]=superuser` |
+
+```typescript
+// Find posts with status "draft" or "review"
+"filter[status][in][0]=draft&filter[status][in][1]=review"
+
+// Parsed AST filter
+{
+  type: "field",
+  field: "status",
+  operator: "in",
+  value: ["draft", "review"]
+}
+```
+
+## Null Operators
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `null` | Value is null | `filter[deletedAt][null]=true` |
+| `notNull` | Value is not null | `filter[publishedAt][notNull]=true` |
+
+```typescript
+// Find posts that have been published (publishedAt is not null)
+"filter[publishedAt][notNull]=true"
+```
+
+## Logical Operators
+
+qbjs supports combining multiple filter conditions using logical operators.
+
+### AND Operator
+
+Multiple filters on different fields are automatically combined with AND:
+
+```typescript
+// Both conditions must be true
+"filter[status][eq]=published&filter[category][eq]=tech"
+```
+
+For explicit AND with complex conditions:
+
+```typescript
+// Explicit AND syntax
+"filter[and][0][status][eq]=published&filter[and][1][featured][eq]=true"
+
+// Parsed AST
+{
+  type: "logical",
+  operator: "and",
+  conditions: [
+    { type: "field", field: "status", operator: "eq", value: "published" },
+    { type: "field", field: "featured", operator: "eq", value: "true" }
+  ]
+}
+```
+
+### OR Operator
+
+Use the `or` operator when any condition can match:
+
+```typescript
+// Either condition can be true
+"filter[or][0][status][eq]=draft&filter[or][1][status][eq]=review"
+
+// Parsed AST
+{
+  type: "logical",
+  operator: "or",
+  conditions: [
+    { type: "field", field: "status", operator: "eq", value: "draft" },
+    { type: "field", field: "status", operator: "eq", value: "review" }
+  ]
+}
+```
+
+### NOT Operator
+
+Negate a condition:
+
+```typescript
+// Find posts that are NOT deleted
+"filter[not][status][eq]=deleted"
+
+// Parsed AST
+{
+  type: "logical",
+  operator: "not",
+  conditions: [
+    { type: "field", field: "status", operator: "eq", value: "deleted" }
+  ]
+}
+```
+
+## Complex Filter Examples
+
+### Combining Multiple Conditions
+
+```typescript
+// Find published tech posts from 2024
+const queryString = [
+  "filter[status][eq]=published",
+  "filter[category][eq]=tech",
+  "filter[createdAt][gte]=2024-01-01"
+].join("&");
+```
+
+### Nested Logical Operators
+
+```typescript
+// Find posts that are (published AND featured) OR (draft AND by admin)
+"filter[or][0][and][0][status][eq]=published&filter[or][0][and][1][featured][eq]=true&filter[or][1][and][0][status][eq]=draft&filter[or][1][and][1][authorRole][eq]=admin"
+```
+
+## Using Filters in Code
+
+```typescript
+import { parse, createDrizzlePgCompiler } from '@qbjs/core';
+import { posts } from './schema';
+
+// Parse the query string
+const result = parse({
+  filter: {
+    status: { eq: 'published' },
+    category: { containsi: 'tech' }
+  }
+});
+
+// Compile to Drizzle query
+const compiler = createDrizzlePgCompiler();
+const compiled = compiler.compile(result.ast!, posts);
+
+// Use with Drizzle
+const data = await db
+  .select()
+  .from(posts)
+  .where(compiled.query.where);
+```
+
+## Filter Operator Reference
+
+| Operator | Description | Value Type | Case Sensitive |
+|----------|-------------|------------|----------------|
+| `eq` | Equal | any | Yes |
+| `eqi` | Equal | string | No |
+| `ne` | Not equal | any | Yes |
+| `nei` | Not equal | string | No |
+| `gt` | Greater than | number/date | - |
+| `gte` | Greater than or equal | number/date | - |
+| `lt` | Less than | number/date | - |
+| `lte` | Less than or equal | number/date | - |
+| `in` | In array | array | Yes |
+| `notIn` | Not in array | array | Yes |
+| `contains` | Contains substring | string | Yes |
+| `containsi` | Contains substring | string | No |
+| `notContains` | Does not contain | string | Yes |
+| `notContainsi` | Does not contain | string | No |
+| `startsWith` | Starts with | string | Yes |
+| `endsWith` | Ends with | string | Yes |
+| `null` | Is null | boolean | - |
+| `notNull` | Is not null | boolean | - |
+| `between` | Between two values | [min, max] | - |
+
+## Best Practices
+
+1. **Use case-insensitive operators for user input**: When filtering by user-provided search terms, prefer `containsi` over `contains`.
+
+2. **Validate filter fields**: Use [security configuration](/docs/guides/security-config) to restrict which fields can be filtered.
+
+3. **Index filtered columns**: Ensure database columns used in filters have appropriate indexes for performance.
+
+4. **Limit filter complexity**: Deep nesting of logical operators can impact query performance.

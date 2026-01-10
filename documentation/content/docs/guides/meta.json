@@ -1,0 +1,13 @@
+{
+	"title": "Guides",
+	"pages": [
+		"filtering",
+		"sorting-pagination",
+		"field-selection",
+		"security-config",
+		"database-adapters",
+		"error-handling",
+		"migration"
+	],
+	"defaultOpen": true
+}

@@ -1,0 +1,301 @@
+---
+title: Sorting & Pagination
+description: Learn how to sort and paginate query results with qbjs
+---
+
+qbjs provides flexible sorting and pagination capabilities to help you retrieve data in the order and quantity you need.
+
+## Sorting
+
+### Basic Sort Syntax
+
+Use the `sort` parameter to order results:
+
+```
+sort=fieldName:direction
+```
+
+Where `direction` is either `asc` (ascending) or `desc` (descending).
+
+```
+GET /api/posts?sort=createdAt:desc
+```
+
+### Default Sort Direction
+
+If you omit the direction, it defaults to ascending:
+
+```
+GET /api/posts?sort=title
+// Equivalent to: sort=title:asc
+```
+
+### Multiple Sort Fields
+
+Sort by multiple fields using comma separation:
+
+```
+GET /api/posts?sort=category:asc,createdAt:desc
+```
+
+This sorts first by category (A-Z), then by creation date (newest first) within each category.
+
+### Sort Examples
+
+```typescript
+// Sort by newest first
+"sort=createdAt:desc"
+
+// Sort by name alphabetically
+"sort=name:asc"
+
+// Sort by price (low to high), then by rating (high to low)
+"sort=price:asc,rating:desc"
+
+// Sort by multiple fields
+"sort=status:asc,priority:desc,createdAt:desc"
+```
+
+### Parsed Sort AST
+
+```typescript
+import { parseSort } from '@qbjs/core';
+
+const sort = parseSort("createdAt:desc,title:asc");
+// Result:
+// [
+//   { field: "createdAt", direction: "desc" },
+//   { field: "title", direction: "asc" }
+// ]
+```
+
+## Pagination
+
+qbjs uses page-based pagination with `page` and `limit` parameters.
+
+### Basic Pagination Syntax
+
+```
+page=<page_number>&limit=<items_per_page>
+```
+
+```
+GET /api/posts?page=1&limit=10
+```
+
+### Pagination Parameters
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `page` | Page number (1-based) | 1 |
+| `limit` | Items per page | 10 |
+
+### Pagination Examples
+
+```typescript
+// First page, 10 items
+"page=1&limit=10"
+
+// Second page, 20 items
+"page=2&limit=20"
+
+// Third page, default limit (10)
+"page=3"
+```
+
+### Offset Calculation
+
+qbjs automatically converts page-based pagination to offset-based:
+
+```typescript
+import { parsePagination } from '@qbjs/core';
+
+const pagination = parsePagination("2", "10");
+// Result:
+// {
+//   offset: 10,  // (page - 1) * limit = (2 - 1) * 10
+//   limit: 10
+// }
+```
+
+### Default Values
+
+When pagination parameters are omitted:
+
+```typescript
+import { parse } from '@qbjs/core';
+
+const result = parse({});
+// result.ast.pagination = { offset: 0, limit: 10 }
+
+const result2 = parse({ page: "3" });
+// result2.ast.pagination = { offset: 20, limit: 10 }
+
+const result3 = parse({ limit: "25" });
+// result3.ast.pagination = { offset: 0, limit: 25 }
+```
+
+## Combining Sort and Pagination
+
+Sort and pagination work together seamlessly:
+
+```typescript
+// Get the second page of posts, sorted by newest first
+"sort=createdAt:desc&page=2&limit=10"
+```
+
+### Complete Example
+
+```typescript
+import { parse, createDrizzlePgCompiler } from '@qbjs/core';
+import { posts } from './schema';
+import { db } from './db';
+
+// Parse query parameters
+const result = parse({
+  sort: "createdAt:desc,title:asc",
+  page: "2",
+  limit: "20"
+});
+
+// Compile to Drizzle
+const compiler = createDrizzlePgCompiler();
+const compiled = compiler.compile(result.ast!, posts);
+
+// Execute query
+const data = await db
+  .select()
+  .from(posts)
+  .orderBy(...compiled.query.orderBy)
+  .limit(compiled.query.limit)
+  .offset(compiled.query.offset);
+```
+
+## Using with Query Builder
+
+The `createQueryBuilder` factory handles sorting and pagination automatically:
+
+```typescript
+import { createQueryBuilder, createDrizzlePgCompiler } from '@qbjs/core';
+import { posts } from './schema';
+
+const builder = createQueryBuilder({
+  compiler: createDrizzlePgCompiler(),
+  config: {
+    maxLimit: 100,
+    defaultLimit: 20
+  }
+});
+
+// Parse and compile in one step
+const result = builder.execute(
+  { sort: "createdAt:desc", page: "1", limit: "10" },
+  posts
+);
+
+// Use the compiled query
+const data = await db
+  .select(result.query.columns)
+  .from(posts)
+  .orderBy(...result.query.orderBy)
+  .limit(result.query.limit)
+  .offset(result.query.offset);
+```
+
+## Security Considerations
+
+### Limiting Maximum Results
+
+Use `maxLimit` in security configuration to prevent excessive data retrieval:
+
+```typescript
+import { createQueryBuilder, createDrizzlePgCompiler } from '@qbjs/core';
+
+const builder = createQueryBuilder({
+  compiler: createDrizzlePgCompiler(),
+  config: {
+    maxLimit: 100  // Cap limit at 100 items
+  }
+});
+
+// If user requests limit=500, it will be capped to 100
+```
+
+### Validating Sort Fields
+
+Restrict which fields can be sorted using security configuration:
+
+```typescript
+import { validateSecurity } from '@qbjs/core';
+
+const securityConfig = {
+  allowedFields: ['id', 'title', 'createdAt', 'status']
+};
+
+const result = parse({ sort: "secretField:desc" });
+const validation = validateSecurity(result.ast!, securityConfig);
+
+if (validation.errors.length > 0) {
+  // Handle invalid sort field
+}
+```
+
+## Pagination Metadata
+
+For building pagination UI, you'll typically need additional metadata:
+
+```typescript
+interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+async function getPaginatedPosts(page: number, limit: number) {
+  const result = parse({ page: String(page), limit: String(limit) });
+  const compiler = createDrizzlePgCompiler();
+  const compiled = compiler.compile(result.ast!, posts);
+  
+  // Get total count
+  const [{ count }] = await db
+    .select({ count: sql`count(*)` })
+    .from(posts);
+  
+  // Get paginated data
+  const data = await db
+    .select()
+    .from(posts)
+    .limit(compiled.query.limit)
+    .offset(compiled.query.offset);
+  
+  const total = Number(count);
+  const totalPages = Math.ceil(total / limit);
+  
+  return {
+    data,
+    meta: {
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1
+    }
+  };
+}
+```
+
+## Best Practices
+
+1. **Always set a maximum limit**: Prevent clients from requesting too much data at once.
+
+2. **Index sorted columns**: Ensure database columns used for sorting have appropriate indexes.
+
+3. **Use consistent defaults**: Set sensible default values for page and limit across your API.
+
+4. **Consider cursor-based pagination**: For very large datasets, consider implementing cursor-based pagination for better performance.
+
+5. **Validate sort fields**: Only allow sorting on fields that are indexed and appropriate for the use case.

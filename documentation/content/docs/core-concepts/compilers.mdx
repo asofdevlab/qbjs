@@ -1,0 +1,267 @@
+---
+title: Compilers
+description: Transforming QueryAST into ORM-specific queries
+---
+
+# Compilers
+
+Compilers are the final stage of the qbjs pipeline. They transform the abstract QueryAST into ORM-specific query objects that can be executed against a database.
+
+## Overview
+
+qbjs provides compilers for Drizzle ORM with support for multiple databases:
+
+- **DrizzlePgCompiler**: PostgreSQL
+- **DrizzleMySqlCompiler**: MySQL
+- **DrizzleSQLiteCompiler**: SQLite
+
+Each compiler understands the specific SQL dialect and ORM patterns for its target database.
+
+## Available Compilers
+
+### PostgreSQL Compiler
+
+```typescript
+import { createDrizzlePgCompiler } from "@qbjs/core";
+
+const compiler = createDrizzlePgCompiler();
+```
+
+Features:
+- Case-insensitive operators use PostgreSQL's `ILIKE`
+- Full support for all filter operators
+- Optimized for PostgreSQL-specific features
+
+### MySQL Compiler
+
+```typescript
+import { createDrizzleMySqlCompiler } from "@qbjs/core";
+
+const compiler = createDrizzleMySqlCompiler();
+```
+
+Features:
+- Case-insensitive operators use `LOWER()` function
+- MySQL-specific SQL generation
+- Compatible with MySQL 5.7+
+
+### SQLite Compiler
+
+```typescript
+import { createDrizzleSQLiteCompiler } from "@qbjs/core";
+
+const compiler = createDrizzleSQLiteCompiler();
+```
+
+Features:
+- SQLite-compatible SQL generation
+- Case-insensitive operators use `LOWER()` function
+- Works with SQLite 3.x
+
+## Using a Compiler
+
+### Basic Usage
+
+```typescript
+import { parseQueryString, createDrizzlePgCompiler } from "@qbjs/core";
+import { db } from "./db";
+import { posts } from "./schema";
+
+// Parse the query string
+const { ast, errors: parseErrors } = parseQueryString(
+  "fields=id,title&filter[status][eq]=published&sort=createdAt:desc&limit=10"
+);
+
+if (parseErrors.length > 0 || !ast) {
+  throw new Error("Invalid query");
+}
+
+// Compile to Drizzle query
+const compiler = createDrizzlePgCompiler();
+const { query, errors: compileErrors, warnings } = compiler.compile(ast, posts);
+
+if (compileErrors.length > 0) {
+  throw new Error("Compilation failed");
+}
+
+// Execute the query
+const results = await db
+  .select(query.columns)
+  .from(posts)
+  .where(query.where)
+  .orderBy(...query.orderBy)
+  .limit(query.limit)
+  .offset(query.offset);
+```
+
+### Compiler Result
+
+The `compile()` method returns a `CompilerResult`:
+
+```typescript
+interface CompilerResult<T> {
+  query: T | null;
+  errors: CompileError[];
+  warnings: CompileWarning[];
+}
+```
+
+### Drizzle Query Structure
+
+For Drizzle compilers, the query object contains:
+
+```typescript
+interface DrizzlePgQuery {
+  columns: Record<string, boolean> | undefined;  // Column selection
+  limit: number;                                  // Pagination limit
+  offset: number;                                 // Pagination offset
+  orderBy: OrderByClause[];                       // Sort clauses
+  where: WhereClause | undefined;                 // Filter conditions
+}
+```
+
+## Error Handling
+
+### Compile Errors
+
+Errors indicate problems that prevent correct query execution:
+
+```typescript
+const { query, errors } = compiler.compile(ast, posts);
+
+for (const error of errors) {
+  console.error(`${error.code}: ${error.message} (field: ${error.field})`);
+}
+```
+
+Error codes:
+
+| Code | Description |
+|------|-------------|
+| `UNKNOWN_COLUMN` | Field doesn't exist in table schema |
+| `TYPE_MISMATCH` | Value type doesn't match expected type |
+| `UNSUPPORTED_OPERATOR` | Operator not supported by this compiler |
+
+### Compile Warnings
+
+Warnings indicate non-fatal issues:
+
+```typescript
+for (const warning of warnings) {
+  console.warn(`${warning.code}: ${warning.message}`);
+  if (warning.suggestion) {
+    console.warn(`  Suggestion: ${warning.suggestion}`);
+  }
+}
+```
+
+Warning codes:
+
+| Code | Description |
+|------|-------------|
+| `COLUMN_IGNORED` | Requested column was ignored |
+| `OPERATOR_FALLBACK` | Operator was replaced with fallback |
+| `PERFORMANCE_HINT` | Query may have performance issues |
+
+## Complete Example
+
+Here's a complete example with a Hono API endpoint:
+
+```typescript
+import { Hono } from "hono";
+import { parseQueryString, createDrizzlePgCompiler } from "@qbjs/core";
+import { db } from "./db";
+import { posts } from "./schema";
+
+const app = new Hono();
+const compiler = createDrizzlePgCompiler();
+
+app.get("/posts", async (c) => {
+  // Parse query string
+  const url = new URL(c.req.url);
+  const { ast, errors: parseErrors } = parseQueryString(url.search);
+  
+  if (parseErrors.length > 0 || !ast) {
+    return c.json({ 
+      error: "Invalid query parameters",
+      details: parseErrors 
+    }, 400);
+  }
+  
+  // Compile to Drizzle
+  const { query, errors: compileErrors, warnings } = compiler.compile(ast, posts);
+  
+  if (compileErrors.length > 0) {
+    return c.json({ 
+      error: "Query compilation failed",
+      details: compileErrors 
+    }, 400);
+  }
+  
+  // Log warnings for debugging
+  if (warnings.length > 0) {
+    console.warn("Query warnings:", warnings);
+  }
+  
+  // Execute query
+  const results = await db
+    .select(query.columns)
+    .from(posts)
+    .where(query.where)
+    .orderBy(...query.orderBy)
+    .limit(query.limit)
+    .offset(query.offset);
+  
+  return c.json({ data: results });
+});
+```
+
+## Database-Specific Behavior
+
+### Case-Insensitive Operations
+
+Different databases handle case-insensitivity differently:
+
+| Operator | PostgreSQL | MySQL | SQLite |
+|----------|------------|-------|--------|
+| `eqi` | `ILIKE` | `LOWER() =` | `LOWER() =` |
+| `containsi` | `ILIKE '%...%'` | `LOWER() LIKE` | `LOWER() LIKE` |
+| `notContainsi` | `NOT ILIKE` | `LOWER() NOT LIKE` | `LOWER() NOT LIKE` |
+
+### Null Handling
+
+All compilers handle `null` and `notNull` operators consistently:
+
+```typescript
+// filter[deletedAt][null]=true
+// Generates: WHERE deleted_at IS NULL
+
+// filter[email][notNull]=true  
+// Generates: WHERE email IS NOT NULL
+```
+
+## Creating Custom Compilers
+
+You can create custom compilers by implementing the `QueryCompiler` interface:
+
+```typescript
+import type { QueryCompiler, CompilerResult } from "@qbjs/core";
+import type { QueryAST } from "@qbjs/core";
+
+class MyCustomCompiler implements QueryCompiler<MyTable, MyQuery> {
+  compile(ast: QueryAST, table: MyTable): CompilerResult<MyQuery> {
+    // Your compilation logic
+    return {
+      query: myQuery,
+      errors: [],
+      warnings: []
+    };
+  }
+}
+```
+
+## Next Steps
+
+- Learn about [security configuration](/docs/core-concepts/security)
+- Explore [database adapters in depth](/docs/guides/database-adapters)
+- See the [API reference for compilers](/docs/api-reference/compilers)

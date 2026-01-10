@@ -1,0 +1,265 @@
+---
+title: Query Builder
+description: API reference for the createQueryBuilder factory function and QueryBuilder interface
+---
+
+The Query Builder is the main entry point for using qbjs. It wires together the parser, security validator, and compiler to provide a unified interface for query processing.
+
+## createQueryBuilder
+
+Factory function to create a configured query builder instance.
+
+```typescript
+import { createQueryBuilder, createDrizzlePgCompiler } from '@qbjs/core';
+
+const builder = createQueryBuilder({
+  config: {
+    allowedFields: ['id', 'name', 'email', 'createdAt'],
+    maxLimit: 50,
+  },
+  compiler: createDrizzlePgCompiler(),
+});
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `options` | `CreateQueryBuilderOptions` | Yes | Configuration options |
+| `options.config` | `SecurityConfig` | No | Security configuration for query validation |
+| `options.compiler` | `QueryCompiler` | Yes | The compiler to use for transforming AST to ORM queries |
+
+### Returns
+
+Returns a `QueryBuilder` instance with methods for parsing, compiling, and executing queries.
+
+## QueryBuilder Interface
+
+The QueryBuilder interface provides methods for processing queries at different stages.
+
+### parse
+
+Parse a query input into a validated AST. Applies security constraints during parsing.
+
+```typescript
+const parseResult = builder.parse({
+  fields: 'id,name,email',
+  page: '1',
+  limit: '10',
+  sort: 'createdAt:desc',
+  filter: { status: { eq: 'active' } }
+});
+
+if (parseResult.errors.length === 0) {
+  console.log(parseResult.ast);
+}
+```
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `input` | `QueryInput` | Yes | Query input object |
+| `input.fields` | `string \| null` | No | Comma-separated field names to select |
+| `input.page` | `string \| number \| null` | No | Page number (1-based) |
+| `input.limit` | `string \| number \| null` | No | Number of items per page |
+| `input.sort` | `string \| null` | No | Sort specification (e.g., "createdAt:desc") |
+| `input.filter` | `unknown` | No | Filter object from QS parsing |
+
+#### Returns
+
+```typescript
+interface QueryBuilderParseResult {
+  ast: QueryAST | null;
+  errors: QueryBuilderError[];
+  warnings: QueryBuilderWarning[];
+}
+```
+
+### parseFromUrl
+
+Parse a URL's query string into a validated AST. Uses the qs library to parse bracket notation filters.
+
+```typescript
+const parseResult = builder.parseFromUrl(
+  'http://localhost:8787/api/posts?filter[title][containsi]=typescript&page=1&limit=10'
+);
+```
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `url` | `string` | Yes | Full URL string with query parameters |
+
+#### Returns
+
+Same as `parse()` - returns `QueryBuilderParseResult`.
+
+### compile
+
+Compile a validated AST into an ORM-specific query.
+
+```typescript
+const compileResult = builder.compile(parseResult.ast!, usersTable);
+
+if (compileResult.errors.length === 0) {
+  // Use compileResult.query with Drizzle
+}
+```
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `ast` | `QueryAST` | Yes | The QueryAST to compile |
+| `table` | `TTable` | Yes | The table schema to compile against |
+
+#### Returns
+
+```typescript
+interface QueryBuilderCompileResult<TQuery> {
+  query: TQuery | null;
+  errors: CompileError[];
+  warnings: CompileWarning[];
+}
+```
+
+### execute
+
+Execute a full query: parse, validate, and compile in one step.
+
+```typescript
+const result = builder.execute({
+  fields: 'id,name,email',
+  page: '1',
+  limit: '10',
+  filter: { status: { eq: 'active' } }
+}, usersTable);
+
+if (result.errors.length === 0) {
+  // Use result.query with Drizzle
+  const users = await db.query.users.findMany({
+    columns: result.query.columns,
+    where: result.query.where,
+    orderBy: result.query.orderBy,
+    limit: result.query.limit,
+    offset: result.query.offset,
+  });
+}
+```
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `input` | `QueryInput` | Yes | Query input object |
+| `table` | `TTable` | Yes | The table schema to compile against |
+
+#### Returns
+
+```typescript
+interface QueryBuilderExecuteResult<TQuery> {
+  query: TQuery | null;
+  ast: QueryAST | null;
+  errors: QueryBuilderError[];
+  warnings: QueryBuilderWarning[];
+}
+```
+
+### executeFromUrl
+
+Execute a full query from a URL: parse, validate, and compile in one step.
+
+```typescript
+const result = builder.executeFromUrl(
+  'http://localhost:8787/api/posts?filter[title][containsi]=typescript&page=1&limit=10',
+  postsTable
+);
+```
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `url` | `string` | Yes | Full URL string with query parameters |
+| `table` | `TTable` | Yes | The table schema to compile against |
+
+#### Returns
+
+Same as `execute()` - returns `QueryBuilderExecuteResult<TQuery>`.
+
+### getSecurityConfig
+
+Get the resolved security configuration.
+
+```typescript
+const config = builder.getSecurityConfig();
+console.log(config.maxLimit); // 50
+console.log(config.allowedFields); // ['id', 'name', 'email', 'createdAt']
+```
+
+#### Returns
+
+Returns the resolved `SecurityConfig` object with all defaults applied.
+
+## Complete Example
+
+```typescript
+import { Hono } from 'hono';
+import { createQueryBuilder, createDrizzlePgCompiler } from '@qbjs/core';
+import { db } from './db';
+import { posts } from './db/schema';
+
+const app = new Hono();
+
+const queryBuilder = createQueryBuilder({
+  config: {
+    allowedFields: ['id', 'title', 'content', 'status', 'createdAt'],
+    maxLimit: 100,
+    operators: ['eq', 'ne', 'contains', 'containsi', 'gt', 'lt', 'gte', 'lte'],
+  },
+  compiler: createDrizzlePgCompiler(),
+});
+
+app.get('/api/posts', async (c) => {
+  const result = queryBuilder.executeFromUrl(c.req.url, posts);
+
+  if (result.errors.length > 0) {
+    return c.json({ errors: result.errors }, 400);
+  }
+
+  const data = await db.query.posts.findMany({
+    columns: result.query!.columns,
+    where: result.query!.where,
+    orderBy: result.query!.orderBy,
+    limit: result.query!.limit,
+    offset: result.query!.offset,
+  });
+
+  return c.json({
+    data,
+    warnings: result.warnings,
+  });
+});
+
+export default app;
+```
+
+## Error Types
+
+### QueryBuilderError
+
+Combined error type that includes parse errors, security errors, and compile errors.
+
+```typescript
+type QueryBuilderError = ParseError | SecurityError | CompileError;
+```
+
+### QueryBuilderWarning
+
+Combined warning type that includes parse warnings, security warnings, and compile warnings.
+
+```typescript
+type QueryBuilderWarning = ParseWarning | SecurityWarning | CompileWarning;
+```

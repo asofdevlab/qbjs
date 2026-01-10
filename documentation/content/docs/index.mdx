@@ -1,0 +1,112 @@
+---
+title: Introduction
+description: qbjs - An ORM-agnostic query builder for building type-safe queries from API request query strings
+icon: BookOpen
+---
+
+import { Cards, Card } from "fumadocs-ui/components/card";
+
+## What is qbjs?
+
+qbjs (Query String Query Builder) is an ORM-agnostic query builder that transforms API request query strings into type-safe database queries. It provides a clean **Parser → AST → Compiler** architecture that separates concerns and makes it easy to support multiple ORMs and databases.
+
+### Key Features
+
+- **Parser → AST → Compiler Architecture**: Clean separation of concerns with a well-defined Abstract Syntax Tree
+- **Type-Safe**: Full TypeScript support with comprehensive type definitions
+- **ORM-Agnostic**: Works with Drizzle ORM (PostgreSQL, MySQL, SQLite)
+- **Security-First**: Built-in security configuration for field allowlisting and operator restrictions
+- **Framework Integration**: First-class support for Hono with middleware included
+- **Flexible Filtering**: Support for comparison, string, and logical operators
+- **Pagination & Sorting**: Built-in support for pagination and multi-field sorting
+
+### How It Works
+
+```
+Query String → Parser → AST → Compiler → Database Query
+```
+
+1. **Parser**: Transforms query strings like `?filter[status][eq]=active&sort=-createdAt` into a structured AST
+2. **AST**: A well-defined intermediate representation that's easy to validate and transform
+3. **Compiler**: Converts the AST into database-specific queries (Drizzle ORM)
+
+### Quick Example
+
+```typescript
+import { createQueryBuilder, createDrizzlePgCompiler } from "@qbjs/core";
+import { users } from "./db/schema";
+
+const queryBuilder = createQueryBuilder({
+  config: {
+    allowedFields: ["id", "name", "email"],
+    maxLimit: 100,
+  },
+  compiler: createDrizzlePgCompiler(),
+});
+
+// Parse and compile: /users?filter[status][eq]=active&sort=-createdAt
+const result = queryBuilder.executeFromUrl(request.url, users);
+```
+
+## Getting Started
+
+<Cards>
+  <Card
+    title="Installation"
+    description="Install qbjs and its peer dependencies"
+    href="/docs/getting-started/installation"
+    icon="Download"
+  />
+  <Card
+    title="Quick Start"
+    description="Build your first query in minutes"
+    href="/docs/getting-started/quick-start"
+    icon="Rocket"
+  />
+  <Card
+    title="Basic Usage"
+    description="Learn the query string format"
+    href="/docs/getting-started/basic-usage"
+    icon="Code"
+  />
+</Cards>
+
+## Core Concepts
+
+<Cards>
+  <Card
+    title="Architecture"
+    description="Understand the Parser → AST → Compiler pipeline"
+    href="/docs/core-concepts/architecture"
+    icon="Layers"
+  />
+  <Card
+    title="Query AST"
+    description="Learn about the Abstract Syntax Tree structure"
+    href="/docs/core-concepts/query-ast"
+    icon="GitBranch"
+  />
+  <Card
+    title="Security"
+    description="Configure field allowlisting and operator restrictions"
+    href="/docs/core-concepts/security"
+    icon="Shield"
+  />
+</Cards>
+
+## Guides & Reference
+
+<Cards>
+  <Card
+    title="Filtering Guide"
+    description="Master all filter operators"
+    href="/docs/guides/filtering"
+    icon="Filter"
+  />
+  <Card
+    title="API Reference"
+    description="Complete API documentation"
+    href="/docs/api-reference/query-builder"
+    icon="FileCode"
+  />
+</Cards>

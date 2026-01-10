@@ -1,0 +1,133 @@
+---
+title: Installation
+description: Install qbjs and configure peer dependencies for your project
+icon: Download
+---
+
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+import { Callout } from "fumadocs-ui/components/callout";
+
+## Install the Package
+
+Install `@qbjs/core` using your preferred package manager:
+
+<Tabs items={["npm", "pnpm", "yarn"]}>
+  <Tab value="npm">
+    ```bash
+    npm install @qbjs/core
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash
+    pnpm add @qbjs/core
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash
+    yarn add @qbjs/core
+    ```
+  </Tab>
+</Tabs>
+
+## Peer Dependencies
+
+qbjs is designed to work with Hono and Drizzle ORM. You'll need to install these peer dependencies based on your use case:
+
+### Required for Drizzle Compilers
+
+If you're using the Drizzle ORM compilers (PostgreSQL, MySQL, or SQLite), install Drizzle ORM:
+
+<Tabs items={["npm", "pnpm", "yarn"]}>
+  <Tab value="npm">
+    ```bash
+    npm install drizzle-orm
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash
+    pnpm add drizzle-orm
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash
+    yarn add drizzle-orm
+    ```
+  </Tab>
+</Tabs>
+
+### Required for Hono Integration
+
+If you're using qbjs with Hono and want OpenAPI schema support:
+
+<Tabs items={["npm", "pnpm", "yarn"]}>
+  <Tab value="npm">
+    ```bash
+    npm install hono @hono/zod-openapi
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash
+    pnpm add hono @hono/zod-openapi
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash
+    yarn add hono @hono/zod-openapi
+    ```
+  </Tab>
+</Tabs>
+
+## Full Installation
+
+For a complete setup with Hono, Drizzle, and PostgreSQL:
+
+<Tabs items={["npm", "pnpm", "yarn"]}>
+  <Tab value="npm">
+    ```bash
+    npm install @qbjs/core drizzle-orm hono @hono/zod-openapi
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash
+    pnpm add @qbjs/core drizzle-orm hono @hono/zod-openapi
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash
+    yarn add @qbjs/core drizzle-orm hono @hono/zod-openapi
+    ```
+  </Tab>
+</Tabs>
+
+## Version Requirements
+
+<Callout type="info">
+  qbjs requires Node.js 20 or later.
+</Callout>
+
+| Dependency | Minimum Version |
+|------------|-----------------|
+| Node.js | 20.x |
+| drizzle-orm | 0.45.1 |
+| hono | 4.11.1 |
+| @hono/zod-openapi | 1.2.0 |
+
+## TypeScript Configuration
+
+qbjs is written in TypeScript and provides full type definitions. No additional `@types` packages are needed.
+
+For the best experience, ensure your `tsconfig.json` includes:
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "moduleResolution": "bundler",
+    "esModuleInterop": true
+  }
+}
+```
+
+## Next Steps
+
+Now that you have qbjs installed, head to the [Quick Start](/docs/getting-started/quick-start) guide to build your first query.

@@ -1,0 +1,117 @@
+{
+	"name": "@qbjs/core",
+	"version": "0.1.0",
+	"description": "An agnostic ORM query builder for building queries for your API Requests",
+	"keywords": [
+		"query-builder",
+		"query-string",
+		"orm",
+		"drizzle",
+		"drizzle-orm",
+		"hono",
+		"api",
+		"rest-api",
+		"filter",
+		"sort",
+		"pagination",
+		"postgresql",
+		"mysql",
+		"sqlite",
+		"typescript"
+	],
+	"homepage": "https://qbjs.vercel.app",
+	"bugs": {
+		"url": "https://github.com/asofdevlab/qbjs/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/asofdevlab/qbjs.git",
+		"directory": "packages/core"
+	},
+	"license": "MIT",
+	"author": "@asofdevlab (https://github.com/asofdevlab)",
+	"type": "module",
+	"exports": {
+		".": {
+			"import": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.js"
+			},
+			"require": {
+				"types": "./dist/index.d.cts",
+				"default": "./dist/index.cjs"
+			}
+		},
+		"./compiler": {
+			"import": {
+				"types": "./dist/compiler/index.d.ts",
+				"default": "./dist/compiler/index.js"
+			},
+			"require": {
+				"types": "./dist/compiler/index.d.cts",
+				"default": "./dist/compiler/index.cjs"
+			}
+		},
+		"./builder": {
+			"import": {
+				"types": "./dist/builder/index.d.ts",
+				"default": "./dist/builder/index.js"
+			},
+			"require": {
+				"types": "./dist/builder/index.d.cts",
+				"default": "./dist/builder/index.cjs"
+			}
+		},
+		"./schemas": {
+			"import": {
+				"types": "./dist/schemas/index.d.ts",
+				"default": "./dist/schemas/index.js"
+			},
+			"require": {
+				"types": "./dist/schemas/index.d.cts",
+				"default": "./dist/schemas/index.cjs"
+			}
+		}
+	},
+	"main": "./dist/index.cjs",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "pkgroll --clean-dist",
+		"format": "biome format --write",
+		"lint": "biome lint --write",
+		"check-types": "tsc --noEmit",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"qs": "^6.14.1"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.3.8",
+		"@types/node": "^25.0.3",
+		"@types/qs": "^6.14.0",
+		"drizzle-orm": "^0.45.1",
+		"fast-check": "^4.5.3",
+		"pkgroll": "^2.21.5",
+		"typescript": "^5.9.3",
+		"vitest": "^4.0.16",
+		"zod": "^4.2.1"
+	},
+	"peerDependencies": {
+		"drizzle-orm": ">=0.45.1",
+		"zod": ">=4.2.1"
+	},
+	"peerDependenciesMeta": {
+		"drizzle-orm": {
+			"optional": true
+		}
+	},
+	"engines": {
+		"node": ">=20"
+	},
+	"module": "./dist/index.js",
+	"sideEffects": false,
+	"packageManager": "pnpm@10.14.0"
+}

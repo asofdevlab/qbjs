@@ -1,0 +1,244 @@
+---
+title: Basic Usage
+description: Learn the query string format for filtering, sorting, pagination, and field selection
+icon: Code
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+This guide explains the query string format that qbjs parses. Understanding this format helps you build powerful API queries.
+
+## Query Parameters Overview
+
+qbjs supports four main query parameters:
+
+| Parameter | Description | Example |
+|-----------|-------------|---------|
+| `fields` | Select specific fields to return | `fields=id,name,email` |
+| `filter` | Filter results by field values | `filter[status][eq]=active` |
+| `sort` | Order results by one or more fields | `sort=createdAt:desc` |
+| `page` / `limit` | Paginate results | `page=2&limit=10` |
+
+## Field Selection
+
+Use the `fields` parameter to select which fields to return. This reduces payload size and improves performance.
+
+```bash
+# Select specific fields
+GET /users?fields=id,name,email
+
+# Returns only the specified fields
+[
+  { "id": "1", "name": "Alice", "email": "alice@example.com" },
+  { "id": "2", "name": "Bob", "email": "bob@example.com" }
+]
+```
+
+<Callout type="info">
+  When `fields` is not specified, all allowed fields are returned (based on your security configuration).
+</Callout>
+
+## Filtering
+
+qbjs uses bracket notation for filters: `filter[field][operator]=value`
+
+### Basic Filters
+
+```bash
+# Exact match
+GET /users?filter[status][eq]=active
+
+# Not equal
+GET /users?filter[status][ne]=inactive
+
+# Case-insensitive exact match
+GET /users?filter[email][eqi]=ALICE@EXAMPLE.COM
+```
+
+### Comparison Operators
+
+```bash
+# Greater than
+GET /users?filter[age][gt]=18
+
+# Greater than or equal
+GET /users?filter[age][gte]=21
+
+# Less than
+GET /users?filter[createdAt][lt]=2024-01-01
+
+# Less than or equal
+GET /users?filter[score][lte]=100
+```
+
+### String Operators
+
+```bash
+# Contains (case-sensitive)
+GET /users?filter[name][contains]=john
+
+# Contains (case-insensitive)
+GET /users?filter[name][containsi]=john
+
+# Starts with
+GET /users?filter[email][startsWith]=admin
+
+# Ends with
+GET /users?filter[email][endsWith]=@example.com
+```
+
+### Array Operators
+
+```bash
+# In array
+GET /users?filter[status][in]=active,pending
+
+# Not in array
+GET /users?filter[role][notIn]=admin,superuser
+```
+
+### Null Checks
+
+```bash
+# Is null
+GET /users?filter[deletedAt][null]=true
+
+# Is not null
+GET /users?filter[verifiedAt][notNull]=true
+```
+
+### Range Operator
+
+```bash
+# Between two values
+GET /users?filter[age][between]=18,65
+```
+
+### All Filter Operators
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `eq` | Equal | `filter[status][eq]=active` |
+| `eqi` | Equal (case-insensitive) | `filter[email][eqi]=TEST@EXAMPLE.COM` |
+| `ne` | Not equal | `filter[status][ne]=deleted` |
+| `nei` | Not equal (case-insensitive) | `filter[name][nei]=ADMIN` |
+| `gt` | Greater than | `filter[age][gt]=18` |
+| `gte` | Greater than or equal | `filter[age][gte]=21` |
+| `lt` | Less than | `filter[price][lt]=100` |
+| `lte` | Less than or equal | `filter[price][lte]=50` |
+| `in` | In array | `filter[status][in]=active,pending` |
+| `notIn` | Not in array | `filter[role][notIn]=admin` |
+| `contains` | Contains substring | `filter[name][contains]=john` |
+| `containsi` | Contains (case-insensitive) | `filter[name][containsi]=john` |
+| `notContains` | Does not contain | `filter[bio][notContains]=spam` |
+| `notContainsi` | Does not contain (case-insensitive) | `filter[bio][notContainsi]=SPAM` |
+| `startsWith` | Starts with | `filter[email][startsWith]=admin` |
+| `endsWith` | Ends with | `filter[email][endsWith]=@example.com` |
+| `null` | Is null | `filter[deletedAt][null]=true` |
+| `notNull` | Is not null | `filter[verifiedAt][notNull]=true` |
+| `between` | Between two values | `filter[age][between]=18,65` |
+
+## Sorting
+
+Use the `sort` parameter to order results. Format: `field:direction`
+
+```bash
+# Sort by single field (ascending)
+GET /users?sort=name:asc
+
+# Sort by single field (descending)
+GET /users?sort=createdAt:desc
+
+# Sort by multiple fields
+GET /users?sort=status:asc,createdAt:desc
+
+# Default direction is ascending
+GET /users?sort=name
+```
+
+<Callout type="info">
+  When sorting by multiple fields, separate them with commas. Results are sorted by the first field, then by subsequent fields for ties.
+</Callout>
+
+## Pagination
+
+qbjs uses page-based pagination with `page` and `limit` parameters.
+
+```bash
+# First page with 10 items
+GET /users?page=1&limit=10
+
+# Second page with 20 items
+GET /users?page=2&limit=20
+
+# Just limit (defaults to page 1)
+GET /users?limit=50
+```
+
+### Default Values
+
+| Parameter | Default |
+|-----------|---------|
+| `page` | 1 |
+| `limit` | 10 (configurable via `defaultLimit`) |
+
+<Callout type="warn">
+  The `maxLimit` security setting caps the maximum items per page. Requests exceeding this limit will be capped automatically.
+</Callout>
+
+## Combining Parameters
+
+You can combine all parameters in a single request:
+
+```bash
+GET /users?fields=id,name,email,status&filter[status][eq]=active&filter[role][in]=admin,moderator&sort=createdAt:desc&page=1&limit=20
+```
+
+This query:
+1. Selects only `id`, `name`, `email`, and `status` fields
+2. Filters for active users with admin or moderator roles
+3. Sorts by creation date (newest first)
+4. Returns the first page with 20 items
+
+## Logical Operators
+
+For complex filtering, use logical operators to combine conditions:
+
+### AND (Implicit)
+
+Multiple filters on different fields are combined with AND:
+
+```bash
+# status = active AND role = admin
+GET /users?filter[status][eq]=active&filter[role][eq]=admin
+```
+
+### AND (Explicit)
+
+```bash
+# Explicit AND
+GET /users?filter[and][0][status][eq]=active&filter[and][1][role][eq]=admin
+```
+
+### OR
+
+```bash
+# status = active OR status = pending
+GET /users?filter[or][0][status][eq]=active&filter[or][1][status][eq]=pending
+```
+
+### NOT
+
+```bash
+# NOT (status = deleted)
+GET /users?filter[not][status][eq]=deleted
+```
+
+## Next Steps
+
+Now that you understand the query format, explore these topics:
+
+- [Architecture](/docs/core-concepts/architecture) - Understand the Parser → AST → Compiler pipeline
+- [Filtering Guide](/docs/guides/filtering) - Deep dive into all filter operators
+- [Security Configuration](/docs/guides/security-config) - Protect your API with field allowlisting
+- [API Reference](/docs/api-reference/query-builder) - Complete API documentation

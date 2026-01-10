@@ -1,0 +1,12 @@
+{
+	"recommendations": [
+		"biomejs.biome",
+		"bradlc.vscode-tailwindcss",
+		"cloudflare.vscode-cloudflare-workers",
+		"drizzle-team.drizzle-vscode",
+		"ms-vscode.vscode-typescript-next",
+		"yoavbls.pretty-ts-errors",
+		"usernamehw.errorlens",
+		"streetsidesoftware.code-spell-checker"
+	]
+}

@@ -1,0 +1,337 @@
+---
+title: Database Adapters
+description: Learn how to use qbjs with PostgreSQL, MySQL, and SQLite through Drizzle ORM
+---
+
+qbjs provides database-specific compilers that translate the QueryAST into optimized queries for each database. Currently, qbjs supports PostgreSQL, MySQL, and SQLite through Drizzle ORM.
+
+## Available Compilers
+
+| Compiler | Database | Import |
+|----------|----------|--------|
+| `DrizzlePgCompiler` | PostgreSQL | `@qbjs/core` |
+| `DrizzleMySqlCompiler` | MySQL | `@qbjs/core` |
+| `DrizzleSQLiteCompiler` | SQLite | `@qbjs/core` |
+
+## PostgreSQL Compiler
+
+PostgreSQL is the recommended database for qbjs, offering the best support for all features.
+
+### Setup
+
+```typescript
+import { createDrizzlePgCompiler, parse } from '@qbjs/core';
+import { pgTable, serial, text, timestamp } from 'drizzle-orm/pg-core';
+
+// Define your schema
+const posts = pgTable('posts', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  content: text('content'),
+  status: text('status').default('draft'),
+  createdAt: timestamp('created_at').defaultNow()
+});
+
+// Create compiler
+const compiler = createDrizzlePgCompiler();
+
+// Parse and compile
+const result = parse({
+  fields: "id,title,status",
+  filter: { status: { eq: "published" } },
+  sort: "createdAt:desc",
+  page: "1",
+  limit: "10"
+});
+
+const compiled = compiler.compile(result.ast!, posts);
+```
+
+### PostgreSQL-Specific Features
+
+PostgreSQL uses native `ILIKE` for case-insensitive operations:
+
+```typescript
+// Case-insensitive contains
+"filter[title][containsi]=typescript"
+
+// Compiles to: WHERE title ILIKE '%typescript%'
+```
+
+### Complete PostgreSQL Example
+
+```typescript
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { createDrizzlePgCompiler, parse } from '@qbjs/core';
+import { posts } from './schema';
+
+const db = drizzle(pool);
+const compiler = createDrizzlePgCompiler();
+
+async function getPosts(query: QueryInput) {
+  const result = parse(query);
+  const compiled = compiler.compile(result.ast!, posts);
+  
+  return await db
+    .select(compiled.query.columns || posts)
+    .from(posts)
+    .where(compiled.query.where)
+    .orderBy(...compiled.query.orderBy)
+    .limit(compiled.query.limit)
+    .offset(compiled.query.offset);
+}
+```
+
+## MySQL Compiler
+
+MySQL uses `LOWER()` function for case-insensitive operations since it doesn't have native `ILIKE`.
+
+### Setup
+
+```typescript
+import { createDrizzleMySqlCompiler, parse } from '@qbjs/core';
+import { mysqlTable, serial, text, timestamp } from 'drizzle-orm/mysql-core';
+
+// Define your schema
+const posts = mysqlTable('posts', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  content: text('content'),
+  status: text('status'),
+  createdAt: timestamp('created_at').defaultNow()
+});
+
+// Create compiler
+const compiler = createDrizzleMySqlCompiler();
+
+// Parse and compile
+const result = parse({
+  filter: { title: { containsi: "typescript" } }
+});
+
+const compiled = compiler.compile(result.ast!, posts);
+```
+
+### MySQL-Specific Behavior
+
+Case-insensitive operators use `LOWER()` function:
+
+```typescript
+// Case-insensitive contains
+"filter[title][containsi]=typescript"
+
+// Compiles to: WHERE LOWER(title) LIKE LOWER('%typescript%')
+```
+
+### Complete MySQL Example
+
+```typescript
+import { drizzle } from 'drizzle-orm/mysql2';
+import { createDrizzleMySqlCompiler, parse } from '@qbjs/core';
+import { posts } from './schema';
+
+const db = drizzle(connection);
+const compiler = createDrizzleMySqlCompiler();
+
+async function getPosts(query: QueryInput) {
+  const result = parse(query);
+  const compiled = compiler.compile(result.ast!, posts);
+  
+  return await db
+    .select(compiled.query.columns || posts)
+    .from(posts)
+    .where(compiled.query.where)
+    .orderBy(...compiled.query.orderBy)
+    .limit(compiled.query.limit)
+    .offset(compiled.query.offset);
+}
+```
+
+## SQLite Compiler
+
+SQLite also uses `LOWER()` function for case-insensitive operations.
+
+### Setup
+
+```typescript
+import { createDrizzleSQLiteCompiler, parse } from '@qbjs/core';
+import { sqliteTable, integer, text } from 'drizzle-orm/sqlite-core';
+
+// Define your schema
+const posts = sqliteTable('posts', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  title: text('title').notNull(),
+  content: text('content'),
+  status: text('status'),
+  createdAt: text('created_at')
+});
+
+// Create compiler
+const compiler = createDrizzleSQLiteCompiler();
+
+// Parse and compile
+const result = parse({
+  filter: { status: { eq: "published" } }
+});
+
+const compiled = compiler.compile(result.ast!, posts);
+```
+
+### SQLite-Specific Behavior
+
+Like MySQL, SQLite uses `LOWER()` for case-insensitive operations:
+
+```typescript
+// Case-insensitive equality
+"filter[name][eqi]=john"
+
+// Compiles to: WHERE LOWER(name) = LOWER('john')
+```
+
+### Complete SQLite Example
+
+```typescript
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { createDrizzleSQLiteCompiler, parse } from '@qbjs/core';
+import { posts } from './schema';
+
+const db = drizzle(sqlite);
+const compiler = createDrizzleSQLiteCompiler();
+
+async function getPosts(query: QueryInput) {
+  const result = parse(query);
+  const compiled = compiler.compile(result.ast!, posts);
+  
+  return await db
+    .select(compiled.query.columns || posts)
+    .from(posts)
+    .where(compiled.query.where)
+    .orderBy(...compiled.query.orderBy)
+    .limit(compiled.query.limit)
+    .offset(compiled.query.offset);
+}
+```
+
+## Database Differences
+
+### Case-Insensitive Operations
+
+| Operator | PostgreSQL | MySQL | SQLite |
+|----------|------------|-------|--------|
+| `eqi` | `ILIKE` | `LOWER() = LOWER()` | `LOWER() = LOWER()` |
+| `nei` | `NOT ILIKE` | `LOWER() != LOWER()` | `LOWER() != LOWER()` |
+| `containsi` | `ILIKE '%...%'` | `LOWER() LIKE LOWER()` | `LOWER() LIKE LOWER()` |
+| `notContainsi` | `NOT ILIKE '%...%'` | `LOWER() NOT LIKE LOWER()` | `LOWER() NOT LIKE LOWER()` |
+
+### Performance Considerations
+
+**PostgreSQL:**
+- Native `ILIKE` is optimized and can use trigram indexes
+- Best performance for case-insensitive text search
+
+**MySQL:**
+- `LOWER()` function prevents index usage
+- Consider using collation for case-insensitive columns
+- For better performance, use case-sensitive operators when possible
+
+**SQLite:**
+- `LOWER()` function prevents index usage
+- SQLite's `LIKE` is case-insensitive by default for ASCII
+- Consider using `COLLATE NOCASE` for columns
+
+## Using with Query Builder
+
+The query builder accepts any compiler:
+
+```typescript
+import { 
+  createQueryBuilder, 
+  createDrizzlePgCompiler,
+  createDrizzleMySqlCompiler,
+  createDrizzleSQLiteCompiler 
+} from '@qbjs/core';
+
+// PostgreSQL
+const pgBuilder = createQueryBuilder({
+  compiler: createDrizzlePgCompiler()
+});
+
+// MySQL
+const mysqlBuilder = createQueryBuilder({
+  compiler: createDrizzleMySqlCompiler()
+});
+
+// SQLite
+const sqliteBuilder = createQueryBuilder({
+  compiler: createDrizzleSQLiteCompiler()
+});
+```
+
+## Compiler Result Structure
+
+All compilers return the same result structure:
+
+```typescript
+interface CompilerResult<T> {
+  query: {
+    columns: Record<string, boolean> | undefined;
+    limit: number;
+    offset: number;
+    orderBy: (ReturnType<typeof asc> | ReturnType<typeof desc>)[];
+    where: SQL | undefined;
+  };
+  errors: CompileError[];
+  warnings: CompileWarning[];
+}
+```
+
+## Error Handling
+
+Compilers report errors for invalid queries:
+
+```typescript
+const result = parse({ fields: "id,nonExistentField" });
+const compiled = compiler.compile(result.ast!, posts);
+
+if (compiled.errors.length > 0) {
+  console.log(compiled.errors);
+  // [{ code: "UNKNOWN_COLUMN", field: "nonExistentField", message: "..." }]
+}
+
+// Valid fields are still included
+// compiled.query.columns = { id: true }
+```
+
+## Best Practices
+
+1. **Choose the right compiler**: Use the compiler that matches your database.
+
+2. **Consider case sensitivity**: If you need case-insensitive search frequently, PostgreSQL offers the best performance.
+
+3. **Index appropriately**: Ensure columns used in filters and sorts have appropriate indexes.
+
+4. **Handle errors**: Always check for compilation errors before executing queries.
+
+5. **Use consistent patterns**: Create a helper function that handles parsing, compiling, and error handling.
+
+```typescript
+import { parse, createDrizzlePgCompiler } from '@qbjs/core';
+
+const compiler = createDrizzlePgCompiler();
+
+function buildQuery<T extends PgTable>(query: QueryInput, table: T) {
+  const parseResult = parse(query);
+  
+  if (parseResult.errors.length > 0) {
+    throw new Error(`Parse error: ${parseResult.errors[0].message}`);
+  }
+  
+  const compileResult = compiler.compile(parseResult.ast!, table);
+  
+  if (compileResult.errors.length > 0) {
+    throw new Error(`Compile error: ${compileResult.errors[0].message}`);
+  }
+  
+  return compileResult.query;
+}
+```

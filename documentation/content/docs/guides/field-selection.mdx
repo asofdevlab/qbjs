@@ -1,0 +1,238 @@
+---
+title: Field Selection
+description: Learn how to select specific fields to optimize API responses with qbjs
+---
+
+Field selection allows API consumers to request only the data they need, reducing payload size and improving performance.
+
+## Basic Syntax
+
+Use the `fields` parameter with comma-separated field names:
+
+```
+fields=field1,field2,field3
+```
+
+```
+GET /api/posts?fields=id,title,createdAt
+```
+
+## Benefits of Field Selection
+
+1. **Reduced payload size**: Only transfer the data you need
+2. **Improved performance**: Less data to serialize and transmit
+3. **Better security**: Avoid exposing sensitive fields unintentionally
+4. **Cleaner responses**: Clients get exactly what they requested
+
+## Examples
+
+### Select Specific Fields
+
+```typescript
+// Only get id and title
+"fields=id,title"
+
+// Get post details without content
+"fields=id,title,author,createdAt,status"
+```
+
+### Parsed Fields AST
+
+```typescript
+import { parseFields } from '@qbjs/core';
+
+const fields = parseFields("id,title,createdAt");
+// Result: ["id", "title", "createdAt"]
+
+const noFields = parseFields("");
+// Result: null (select all fields)
+
+const undefinedFields = parseFields(undefined);
+// Result: null (select all fields)
+```
+
+## Using Field Selection
+
+### With the Parser
+
+```typescript
+import { parse, createDrizzlePgCompiler } from '@qbjs/core';
+import { posts } from './schema';
+
+const result = parse({
+  fields: "id,title,status,createdAt"
+});
+
+const compiler = createDrizzlePgCompiler();
+const compiled = compiler.compile(result.ast!, posts);
+
+// compiled.query.columns = { id: true, title: true, status: true, createdAt: true }
+```
+
+### With Drizzle ORM
+
+```typescript
+import { parse, createDrizzlePgCompiler } from '@qbjs/core';
+import { posts } from './schema';
+import { db } from './db';
+
+const result = parse({ fields: "id,title,author" });
+const compiler = createDrizzlePgCompiler();
+const compiled = compiler.compile(result.ast!, posts);
+
+// Use columns in query
+const data = await db
+  .select(compiled.query.columns || posts)
+  .from(posts);
+```
+
+### With Query Builder
+
+```typescript
+import { createQueryBuilder, createDrizzlePgCompiler } from '@qbjs/core';
+import { posts } from './schema';
+
+const builder = createQueryBuilder({
+  compiler: createDrizzlePgCompiler()
+});
+
+const result = builder.execute(
+  { fields: "id,title,status" },
+  posts
+);
+
+// result.query.columns contains the field selection
+```
+
+## Combining with Other Parameters
+
+Field selection works seamlessly with filtering, sorting, and pagination:
+
+```typescript
+// Get specific fields with filtering and sorting
+"fields=id,title,createdAt&filter[status][eq]=published&sort=createdAt:desc&page=1&limit=10"
+```
+
+### Complete Example
+
+```typescript
+import { parse, createDrizzlePgCompiler } from '@qbjs/core';
+import { posts } from './schema';
+import { db } from './db';
+
+const result = parse({
+  fields: "id,title,author,createdAt",
+  filter: { status: { eq: "published" } },
+  sort: "createdAt:desc",
+  page: "1",
+  limit: "10"
+});
+
+const compiler = createDrizzlePgCompiler();
+const compiled = compiler.compile(result.ast!, posts);
+
+const data = await db
+  .select(compiled.query.columns || posts)
+  .from(posts)
+  .where(compiled.query.where)
+  .orderBy(...compiled.query.orderBy)
+  .limit(compiled.query.limit)
+  .offset(compiled.query.offset);
+```
+
+## Handling Invalid Fields
+
+When a requested field doesn't exist in the table schema, qbjs reports an error:
+
+```typescript
+import { parse, createDrizzlePgCompiler } from '@qbjs/core';
+import { posts } from './schema';
+
+const result = parse({ fields: "id,title,nonExistentField" });
+const compiler = createDrizzlePgCompiler();
+const compiled = compiler.compile(result.ast!, posts);
+
+// compiled.errors will contain:
+// [{ code: "UNKNOWN_COLUMN", field: "nonExistentField", message: "..." }]
+
+// Valid fields are still included in the query
+// compiled.query.columns = { id: true, title: true }
+```
+
+## Security Considerations
+
+### Restricting Allowed Fields
+
+Use security configuration to control which fields can be selected:
+
+```typescript
+import { validateSecurity } from '@qbjs/core';
+
+const securityConfig = {
+  allowedFields: ['id', 'title', 'author', 'createdAt', 'status']
+  // Fields like 'password', 'internalNotes' are not allowed
+};
+
+const result = parse({ fields: "id,title,password" });
+const validation = validateSecurity(result.ast!, securityConfig);
+
+if (validation.errors.length > 0) {
+  // Handle security violation
+  // validation.errors[0].message = "Field 'password' is not allowed"
+}
+```
+
+### Default Field Selection
+
+When no fields are specified, all columns are selected. Consider whether this is appropriate for your API:
+
+```typescript
+import { createQueryBuilder, createDrizzlePgCompiler } from '@qbjs/core';
+
+const builder = createQueryBuilder({
+  compiler: createDrizzlePgCompiler(),
+  config: {
+    // Optionally set default fields
+    allowedFields: ['id', 'title', 'author', 'createdAt']
+  }
+});
+```
+
+## Best Practices
+
+1. **Document available fields**: Let API consumers know which fields they can request.
+
+2. **Use allowedFields for security**: Prevent exposure of sensitive data by explicitly listing allowed fields.
+
+3. **Consider default selections**: For large tables, consider requiring field selection or providing sensible defaults.
+
+4. **Validate field names**: Always validate that requested fields exist and are allowed.
+
+5. **Handle empty selections gracefully**: When all requested fields are invalid, decide whether to return all fields or an error.
+
+## API Response Pattern
+
+A common pattern is to include the selected fields in the response metadata:
+
+```typescript
+async function getPosts(query: QueryInput) {
+  const result = parse(query);
+  const compiler = createDrizzlePgCompiler();
+  const compiled = compiler.compile(result.ast!, posts);
+  
+  const data = await db
+    .select(compiled.query.columns || posts)
+    .from(posts)
+    .limit(compiled.query.limit)
+    .offset(compiled.query.offset);
+  
+  return {
+    data,
+    meta: {
+      fields: result.ast?.fields || 'all',
+      page: Math.floor(compiled.query.offset / compiled.query.limit) + 1,
+      limit: compiled.query.limit
+    }
+  };
+}
+```

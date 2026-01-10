@@ -1,0 +1,313 @@
+---
+title: Security
+description: Protecting your API with qbjs security configuration
+---
+
+# Security
+
+qbjs includes a security layer that protects your API from malicious or excessive queries. Security validation happens at the AST level, ensuring consistent protection regardless of which compiler you use.
+
+## Why Security Matters
+
+Query string APIs are powerful but can be abused:
+
+- **Data exposure**: Users might request fields they shouldn't access
+- **Resource exhaustion**: Unlimited pagination can overload your database
+- **Injection attacks**: Malicious operators or field names could exploit vulnerabilities
+
+qbjs's security configuration lets you define exactly what's allowed.
+
+## SecurityConfig
+
+The `SecurityConfig` interface defines your security rules:
+
+```typescript
+interface SecurityConfig {
+  allowedFields?: string[];      // Fields that can be queried
+  allowedRelations?: string[];   // Relations that can be joined
+  maxLimit?: number;             // Maximum items per page
+  operators?: FilterOperator[];  // Allowed filter operators
+  defaultLimit?: number;         // Default items per page
+  defaultPage?: number;          // Default page number
+}
+```
+
+## Configuration Options
+
+### allowedFields
+
+Restrict which fields can be selected, filtered, or sorted:
+
+```typescript
+const config: SecurityConfig = {
+  allowedFields: ["id", "title", "status", "createdAt"]
+};
+```
+
+When set:
+- Only these fields can appear in `fields` parameter
+- Only these fields can be used in filters
+- Only these fields can be used for sorting
+
+When empty or undefined, all fields are allowed.
+
+### maxLimit
+
+Cap the maximum number of items per page:
+
+```typescript
+const config: SecurityConfig = {
+  maxLimit: 100  // Maximum 100 items per request
+};
+```
+
+If a request asks for more than `maxLimit`, the limit is automatically capped and a warning is generated.
+
+Default: `100`
+
+### operators
+
+Restrict which filter operators can be used:
+
+```typescript
+const config: SecurityConfig = {
+  operators: ["eq", "ne", "gt", "gte", "lt", "lte", "in"]
+};
+```
+
+This prevents users from using potentially expensive operators like `contains` or `containsi` which may not use indexes efficiently.
+
+Default: All operators allowed.
+
+### defaultLimit and defaultPage
+
+Set defaults when not specified in the query:
+
+```typescript
+const config: SecurityConfig = {
+  defaultLimit: 20,  // 20 items per page by default
+  defaultPage: 1     // Start at page 1
+};
+```
+
+## Using Security Validation
+
+### validateSecurity()
+
+The main function for security validation:
+
+```typescript
+import { parseQueryString, validateSecurity } from "@qbjs/core";
+
+const { ast, errors: parseErrors } = parseQueryString(queryString);
+
+if (parseErrors.length > 0 || !ast) {
+  return { error: "Invalid query" };
+}
+
+const securityConfig: SecurityConfig = {
+  allowedFields: ["id", "title", "status", "createdAt"],
+  maxLimit: 50,
+  operators: ["eq", "ne", "in", "contains"]
+};
+
+const { valid, errors, warnings, ast: validatedAst } = validateSecurity(ast, securityConfig);
+
+if (!valid) {
+  return { error: "Security validation failed", details: errors };
+}
+
+// Use validatedAst (may have capped limit)
+```
+
+### Security Validation Result
+
+```typescript
+interface SecurityValidationResult {
+  valid: boolean;              // True if no errors
+  errors: SecurityError[];     // Blocking errors
+  warnings: SecurityWarning[]; // Non-blocking warnings
+  ast: QueryAST | null;        // Modified AST (e.g., capped limit)
+}
+```
+
+### Security Errors
+
+Errors indicate security violations that should block the request:
+
+| Code | Description |
+|------|-------------|
+| `FIELD_NOT_ALLOWED` | Requested field is not in allowedFields |
+| `OPERATOR_NOT_ALLOWED` | Filter operator is not in allowed operators |
+| `LIMIT_EXCEEDED` | Limit exceeds maxLimit (error mode) |
+
+### Security Warnings
+
+Warnings indicate issues that were automatically corrected:
+
+| Code | Description |
+|------|-------------|
+| `LIMIT_CAPPED` | Limit was reduced to maxLimit |
+
+## Complete Example
+
+Here's a complete example with Hono:
+
+```typescript
+import { Hono } from "hono";
+import { 
+  parseQueryString, 
+  validateSecurity, 
+  createDrizzlePgCompiler 
+} from "@qbjs/core";
+import { db } from "./db";
+import { posts } from "./schema";
+
+const app = new Hono();
+const compiler = createDrizzlePgCompiler();
+
+// Define security config for posts endpoint
+const postsSecurityConfig = {
+  allowedFields: ["id", "title", "content", "status", "createdAt", "updatedAt"],
+  maxLimit: 50,
+  operators: ["eq", "ne", "in", "notIn", "contains", "containsi", "gt", "gte", "lt", "lte"],
+  defaultLimit: 20
+};
+
+app.get("/posts", async (c) => {
+  // 1. Parse query string
+  const url = new URL(c.req.url);
+  const { ast, errors: parseErrors } = parseQueryString(url.search);
+  
+  if (parseErrors.length > 0 || !ast) {
+    return c.json({ error: "Invalid query parameters", details: parseErrors }, 400);
+  }
+  
+  // 2. Validate security
+  const { valid, errors: securityErrors, warnings, ast: secureAst } = 
+    validateSecurity(ast, postsSecurityConfig);
+  
+  if (!valid) {
+    return c.json({ error: "Security validation failed", details: securityErrors }, 403);
+  }
+  
+  // Log warnings for monitoring
+  if (warnings.length > 0) {
+    console.warn("Security warnings:", warnings);
+  }
+  
+  // 3. Compile and execute
+  const { query, errors: compileErrors } = compiler.compile(secureAst!, posts);
+  
+  if (compileErrors.length > 0) {
+    return c.json({ error: "Query compilation failed", details: compileErrors }, 400);
+  }
+  
+  const results = await db
+    .select(query.columns)
+    .from(posts)
+    .where(query.where)
+    .orderBy(...query.orderBy)
+    .limit(query.limit)
+    .offset(query.offset);
+  
+  return c.json({ data: results });
+});
+```
+
+## Best Practices
+
+### 1. Always Define allowedFields
+
+Don't expose all database columns by default:
+
+```typescript
+// ❌ Bad: Exposes all fields including sensitive ones
+const config = { maxLimit: 100 };
+
+// ✅ Good: Explicitly list allowed fields
+const config = {
+  allowedFields: ["id", "title", "status", "createdAt"],
+  maxLimit: 100
+};
+```
+
+### 2. Set Reasonable Limits
+
+Prevent resource exhaustion:
+
+```typescript
+const config = {
+  maxLimit: 100,      // Cap at 100 items
+  defaultLimit: 20    // Default to 20 items
+};
+```
+
+### 3. Restrict Expensive Operators
+
+Some operators can be slow on large tables:
+
+```typescript
+// For high-traffic endpoints, consider restricting to indexed operations
+const config = {
+  operators: ["eq", "ne", "in", "notIn", "gt", "gte", "lt", "lte"]
+  // Excludes: contains, containsi, startsWith, endsWith
+};
+```
+
+### 4. Different Configs for Different Endpoints
+
+Use stricter configs for public endpoints:
+
+```typescript
+// Public API - strict
+const publicConfig = {
+  allowedFields: ["id", "title", "summary"],
+  maxLimit: 25,
+  operators: ["eq", "in"]
+};
+
+// Admin API - permissive
+const adminConfig = {
+  allowedFields: ["id", "title", "content", "status", "authorId", "createdAt", "updatedAt"],
+  maxLimit: 100,
+  operators: [...FILTER_OPERATORS]  // All operators
+};
+```
+
+### 5. Log Security Warnings
+
+Monitor for potential abuse:
+
+```typescript
+const { warnings } = validateSecurity(ast, config);
+
+if (warnings.length > 0) {
+  logger.warn("Security warnings", { 
+    warnings, 
+    ip: request.ip,
+    path: request.path 
+  });
+}
+```
+
+## Default Configuration
+
+If no config is provided, qbjs uses these defaults:
+
+```typescript
+const DEFAULT_SECURITY_CONFIG = {
+  allowedFields: [],        // All fields allowed
+  allowedRelations: [],     // All relations allowed
+  maxLimit: 100,            // Max 100 items
+  operators: [...FILTER_OPERATORS],  // All operators
+  defaultLimit: 10,         // 10 items by default
+  defaultPage: 1            // Start at page 1
+};
+```
+
+## Next Steps
+
+- See [security configuration guide](/docs/guides/security-config) for advanced patterns
+- Learn about [error handling](/docs/guides/error-handling)
+- Explore the [API reference for security](/docs/api-reference/security)
