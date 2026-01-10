@@ -8,7 +8,7 @@ import { Cards, Card } from "fumadocs-ui/components/card";
 
 ## What is qbjs?
 
-qbjs (Query String Query Builder) is an ORM-agnostic query builder that transforms API request query strings into type-safe database queries. It provides a clean **Parser → AST → Compiler** architecture that separates concerns and makes it easy to support multiple ORMs and databases.
+qbjs (Query Builder) is an ORM-agnostic query builder that transforms API request query strings into type-safe database queries. It provides a clean **Parser → AST → Compiler** architecture that separates concerns and makes it easy to support multiple ORMs and databases.
 
 ### Key Features
 
@@ -55,19 +55,16 @@ const result = queryBuilder.executeFromUrl(request.url, users);
     title="Installation"
     description="Install qbjs and its peer dependencies"
     href="/docs/getting-started/installation"
-    icon="Download"
   />
   <Card
     title="Quick Start"
     description="Build your first query in minutes"
     href="/docs/getting-started/quick-start"
-    icon="Rocket"
   />
   <Card
     title="Basic Usage"
     description="Learn the query string format"
     href="/docs/getting-started/basic-usage"
-    icon="Code"
   />
 </Cards>
 
@@ -78,19 +75,16 @@ const result = queryBuilder.executeFromUrl(request.url, users);
     title="Architecture"
     description="Understand the Parser → AST → Compiler pipeline"
     href="/docs/core-concepts/architecture"
-    icon="Layers"
   />
   <Card
     title="Query AST"
     description="Learn about the Abstract Syntax Tree structure"
     href="/docs/core-concepts/query-ast"
-    icon="GitBranch"
   />
   <Card
     title="Security"
     description="Configure field allowlisting and operator restrictions"
     href="/docs/core-concepts/security"
-    icon="Shield"
   />
 </Cards>
 
@@ -101,12 +95,10 @@ const result = queryBuilder.executeFromUrl(request.url, users);
     title="Filtering Guide"
     description="Master all filter operators"
     href="/docs/guides/filtering"
-    icon="Filter"
   />
   <Card
     title="API Reference"
     description="Complete API documentation"
     href="/docs/api-reference/query-builder"
-    icon="FileCode"
   />
 </Cards>

@@ -81,7 +81,7 @@ export default function HomePage() {
 				<div className="flex flex-col sm:flex-row gap-4">
 					<Link
 						href="/docs"
-						className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-fd-primary text-fd-primary-foreground font-medium hover:bg-fd-primary/90 transition-colors"
+						className="inline-flex items-center justify-center px-6 py-3 rounded-lg dark:text-black font-semibold bg-linear-to-r from-pink-400 via-pink-200 to-pink-100 transition-colors"
 					>
 						Get Started
 					</Link>
@@ -162,7 +162,7 @@ export default function HomePage() {
 					</div>
 					<Link
 						href="/docs/getting-started/installation"
-						className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-fd-primary text-fd-primary-foreground font-medium hover:bg-fd-primary/90 transition-colors"
+						className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-linear-to-r from bg-pink-400 via-pink-200 to-pink-100 transition-colors dark:text-black font-semibold"
 					>
 						Read the Documentation
 					</Link>

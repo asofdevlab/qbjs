@@ -37,7 +37,6 @@ yarn add @qbjs/core
 qbjs works with the following peer dependencies:
 
 ```bash
-# For Hono integration
 npm install zod
 
 # For Drizzle ORM

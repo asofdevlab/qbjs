@@ -17,7 +17,7 @@
 		"check-types": "turbo run check-types",
 		"prepare": "husky",
 		"clean": "turbo run clean && rm -rf node_modules",
-		"clean:turbo": "rm -rf .turbo packages/*/.turbo apps/*/.turbo examples/*/.turbo documentation/*/.turbo",
+		"clean:turbo": "rm -rf .turbo",
 		"clean:deps": "rm -rf node_modules packages/*/node_modules apps/*/node_modules examples/*/node_modules documentation/*/node_modules",
 		"clean:lockfiles": "rm -rf pnpm-lock.yaml",
 		"reset": "pnpm clean:lockfiles clean:deps && pnpm clean:turbo && pnpm install",

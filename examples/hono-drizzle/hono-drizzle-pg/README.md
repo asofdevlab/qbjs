@@ -273,7 +273,7 @@ src/
 
 ## Learn More
 
-- [qbjs Documentation](https://qbjs.dev)
+- [qbjs Documentation](https://qbjs.vercel.app)
 - [Hono Documentation](https://hono.dev/)
 - [Drizzle ORM Documentation](https://orm.drizzle.team/)
 - [OpenAPI with Hono](https://hono.dev/examples/zod-openapi)

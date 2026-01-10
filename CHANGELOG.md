@@ -33,7 +33,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Pagination**: Support for `page` and `limit` query parameters
 - **Sorting**: Support for ascending and descending sort with `-` prefix for descending
 - **Field Selection**: Support for `fields` parameter to select specific columns
-- **Hono Middleware**: `createQueryParserMiddleware()` for Hono framework integration
 - **LRU Cache**: Query result caching for improved performance
 - **Backward Compatibility**: Migration utilities for legacy query formats
 - **TypeScript Support**: Full type definitions with strict mode

@@ -32,7 +32,12 @@ yarn add @qbjs/core
 ### Peer Dependencies
 
 ```bash
-npm install hono @hono/zod-openapi drizzle-orm
+npm install zod
+```
+
+### Optional Dependencies
+```bash
+npm install drizzle-orm
 ```
 
 ## Quick Start
