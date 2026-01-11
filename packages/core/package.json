@@ -1,6 +1,6 @@
 {
 	"name": "@qbjs/core",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "An agnostic ORM query builder for building queries for your API Requests",
 	"keywords": [
 		"query-builder",
