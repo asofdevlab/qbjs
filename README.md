@@ -1,4 +1,4 @@
-# qbjs - Query String Query Builder
+# qbjs - ORM-Agnostic Query Builder
 
 [![npm version](https://img.shields.io/npm/v/@qbjs/core.svg)](https://www.npmjs.com/package/@qbjs/core)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -150,12 +150,12 @@ const queryBuilder = createQueryBuilder({
 
 ## Documentation
 
-For comprehensive documentation, guides, and API reference, visit our [documentation site](https://qbjs.vercel.app).
+For comprehensive documentation, guides, and API reference, visit our [documentation site](https://qbjs.asof.dev).
 
-- [Getting Started](https://qbjs.vercel.app/docs/getting-started)
-- [Core Concepts](https://qbjs.vercel.app/docs/core-concepts)
-- [Guides](https://qbjs.vercel.app/docs/guides)
-- [API Reference](https://qbjs.vercel.app/docs/api-reference)
+- [Getting Started](https://qbjs.asof.dev/docs/getting-started)
+- [Core Concepts](https://qbjs.asof.dev/docs/core-concepts)
+- [Guides](https://qbjs.asof.dev/docs/guides)
+- [API Reference](https://qbjs.asof.dev/docs/api-reference)
 
 ## Contributing
 

@@ -26,13 +26,13 @@
 		"db:studio": "pnpm --filter @examples/hono-drizzle-pg db:studio"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.3.10",
+		"@biomejs/biome": "^2.3.10",
 		"husky": "^9.1.7",
 		"turbo": "^2.7.3",
 		"typescript": "5.9.2"
 	},
 	"packageManager": "pnpm@10.14.0",
 	"engines": {
-		"node": ">=20"
+		"node": ">=24.11.1"
 	}
 }

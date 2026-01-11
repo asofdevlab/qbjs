@@ -90,11 +90,11 @@ GET /users?fields=id,name,email
 
 For comprehensive documentation, guides, and API reference:
 
-**[📚 Full Documentation](https://qbjs.dev)**
+**[📚 Full Documentation](https://qbjs.asof.dev)**
 
-- [Getting Started](https://qbjs.dev/docs/getting-started)
-- [Core Concepts](https://qbjs.dev/docs/core-concepts)
-- [API Reference](https://qbjs.dev/docs/api-reference)
+- [Getting Started](https://qbjs.asof.dev/docs/getting-started)
+- [Core Concepts](https://qbjs.asof.dev/docs/core-concepts)
+- [API Reference](https://qbjs.asof.dev/docs/api-reference)
 
 ## License
 
