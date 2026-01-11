@@ -51,26 +51,6 @@ jobs:
       - name: Type Check
         run: pnpm check-types
 
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.14.0
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: "pnpm"
-      - name: Install dependencies
-        run: pnpm install
-      - name: Compile TypeScript
-        run: pnpm build
-
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -110,6 +90,26 @@ jobs:
         run: pnpm install
       - name: Test
         run: pnpm test
+        
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.14.0
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install
+      - name: Compile TypeScript
+        run: pnpm build
 
 # stops workflows in progress if a new commit is added to PR
 concurrency:
