@@ -12,6 +12,7 @@
 		"dev": "turbo run dev",
 		"dev:doc": "pnpm --filter @qbjs/documentation dev",
 		"build:doc": "pnpm --filter @qbjs/documentation build",
+		"deploy:doc": "pnpm --filter @qbjs/documentation deploy",
 		"format": "turbo run format",
 		"test": "turbo run test",
 		"check-types": "turbo run check-types",
