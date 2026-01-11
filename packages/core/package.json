@@ -19,7 +19,7 @@
 		"sqlite",
 		"typescript"
 	],
-	"homepage": "https://qbjs.vercel.app",
+	"homepage": "https://qbjs.asof.dev",
 	"bugs": {
 		"url": "https://github.com/asofdevlab/qbjs/issues"
 	},
@@ -111,10 +111,10 @@
 			"optional": true
 		}
 	},
-	"engines": {
-		"node": ">=20"
-	},
 	"module": "./dist/index.js",
 	"sideEffects": false,
-	"packageManager": "pnpm@10.14.0"
+	"packageManager": "pnpm@10.14.0",
+	"engines": {
+		"node": ">=24.11.1"
+	}
 }

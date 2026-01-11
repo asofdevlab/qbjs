@@ -1,5 +1,64 @@
 {
 	"$schema": "https://biomejs.dev/schemas/2.3.10/schema.json",
-	"root": false,
-	"extends": ["@repo/biome-config/base", "@repo/biome-config/next-js"]
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		"ignoreUnknown": true,
+		"includes": [
+			"**",
+			"!node_modules",
+			"!.source",
+			"!.tanstack",
+			"!.wrangler",
+			"!.turbo",
+			"!dist",
+			"!worker-configuration.d.ts"
+		]
+	},
+	"formatter": {
+		"enabled": true,
+		"lineWidth": 120,
+		"indentStyle": "tab",
+		"indentWidth": 2
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"correctness": {
+				"useExhaustiveDependencies": "warn",
+				"useHookAtTopLevel": "error",
+				"noUnusedImports": "off",
+				"noUnusedVariables": "warn"
+			},
+			"style": {
+				"noProcessEnv": "error",
+				"noNonNullAssertion": "off",
+				"useConst": "error",
+				"useTemplate": "warn"
+			},
+			"suspicious": {
+				"noExplicitAny": "off",
+				"noArrayIndexKey": "warn"
+			},
+			"a11y": {
+				"useButtonType": "warn",
+				"useAltText": "error"
+			}
+		},
+		"domains": {
+			"react": "recommended"
+		}
+	},
+	"assist": {
+		"enabled": true,
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	}
 }
