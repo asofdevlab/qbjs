@@ -3,6 +3,9 @@
 	"version": "1.0.0",
 	"type": "module",
 	"private": true,
+	"exports": {
+		"./routes": "./src/routes/index.ts"
+	},
 	"scripts": {
 		"dev": "bun run --hot src/index.ts",
 		"start": "bun run dist/index.js",
@@ -14,9 +17,6 @@
 		"db:migrate": "drizzle-kit migrate",
 		"db:studio": "drizzle-kit studio",
 		"db:push": "drizzle-kit push"
-	},
-	"exports": {
-		"./routes": "./src/routes/index.ts"
 	},
 	"dependencies": {
 		"@hono/node-server": "^1.19.7",

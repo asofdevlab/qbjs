@@ -1,0 +1,33 @@
+{
+	"name": "@repo/api-client",
+	"type": "module",
+	"version": "1.0.0",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"dev": "tsc --watch",
+		"build": "rm -rf dist && tsc",
+		"format": "biome format --write",
+		"lint": "biome lint --write",
+		"check-types": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@examples/hono-drizzle-pg": "workspace:^"
+	},
+	"peerDependencies": {
+		"hono": ">=4.11.3"
+	},
+	"devDependencies": {
+		"hono": "^4.11.3",
+		"@repo/biome-config": "workspace:^",
+		"@repo/typescript-config": "workspace:*",
+		"@types/node": "^25.0.3",
+		"typescript": "^5.9.3"
+	}
+}

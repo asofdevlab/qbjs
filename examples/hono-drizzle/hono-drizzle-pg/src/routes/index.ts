@@ -9,8 +9,4 @@ export function registerRoutes(app: AppOpenAPI) {
 
 // stand alone router type used for api client
 const router = registerRoutes(createRouter().basePath(BASE_PATH))
-
 export type router = typeof router
-
-// AppType export for @repo/types and @repo/api-client
-export type AppType = typeof router

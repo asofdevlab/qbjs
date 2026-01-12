@@ -1,7 +1,7 @@
 packages:
-  - integrations/**/*
   - examples/**/*
-  - packages/**/*
+  - integrations/*
+  - packages/*
   - apps/*
 
 overrides:
