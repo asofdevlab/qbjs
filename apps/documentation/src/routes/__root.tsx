@@ -14,10 +14,19 @@ export const Route = createRootRoute({
 				content: "width=device-width, initial-scale=1",
 			},
 			{
-				title: "Fumadocs on TanStack Start",
+				title: "Qbjs - Documentation",
+			},
+			{
+				description: "An ORM-agnostic query builder for building type-safe queries from API request query strings",
 			},
 		],
-		links: [{ rel: "stylesheet", href: appCss }],
+		links: [
+			{ rel: "stylesheet", href: appCss },
+			{
+				rel: "icon",
+				href: "/favicon.ico",
+			},
+		],
 	}),
 	component: RootComponent,
 });
@@ -38,7 +47,13 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				<HeadContent />
 			</head>
 			<body className="flex flex-col min-h-screen">
-				<RootProvider>{children}</RootProvider>
+				<RootProvider
+					search={{
+						enabled: true,
+					}}
+				>
+					{children}
+				</RootProvider>
 				<Scripts />
 			</body>
 		</html>

@@ -11,6 +11,7 @@
 		"build": "turbo run build",
 		"dev": "turbo run dev",
 		"dev:doc": "pnpm --filter @qbjs/documentation dev",
+		"publish:core": "pnpm --filter @qbjs/core release",
 		"build:doc": "pnpm --filter @qbjs/documentation build",
 		"doc:typegen": "pnpm --filter @qbjs/documentation cf-typegen",
 		"deploy:doc": "pnpm --filter @qbjs/documentation cf-typegen && pnpm --filter @qbjs/documentation deploy:cf",
