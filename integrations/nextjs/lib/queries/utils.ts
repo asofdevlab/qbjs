@@ -16,43 +16,43 @@ export type FilterOperator =
 	| "startsWith"
 	| "between"
 	| "null"
-	| "notNull";
+	| "notNull"
 
-export type FilterValue = Record<FilterOperator, unknown>;
-export type Filter = Record<string, Partial<FilterValue>>;
+export type FilterValue = Record<FilterOperator, unknown>
+export type Filter = Record<string, Partial<FilterValue>>
 
 export interface QueryParams {
-	page?: number;
-	limit?: number;
-	sort?: string;
-	fields?: string;
-	filter?: Filter;
+	page?: number
+	limit?: number
+	sort?: string
+	fields?: string
+	filter?: Filter
 }
 
 export interface QueryParamsSearch {
-	q: string;
-	page?: number;
-	limit?: number;
-	sort?: string;
-	fields?: string;
-	filter?: Filter;
+	q: string
+	page?: number
+	limit?: number
+	sort?: string
+	fields?: string
+	filter?: Filter
 }
 
 /**
  * Builds a query object from params, only including defined values
  */
 export function buildQuery(params?: QueryParams): Record<string, string> {
-	const query: Record<string, string> = {};
+	const query: Record<string, string> = {}
 
-	if (!params) return query;
+	if (!params) return query
 
-	if (params.page !== undefined) query.page = params.page.toString();
-	if (params.limit !== undefined) query.limit = params.limit.toString();
-	if (params.sort) query.sort = params.sort;
-	if (params.fields) query.fields = params.fields;
-	if (params.filter) query.filter = JSON.stringify(params.filter);
+	if (params.page !== undefined) query.page = params.page.toString()
+	if (params.limit !== undefined) query.limit = params.limit.toString()
+	if (params.sort) query.sort = params.sort
+	if (params.fields) query.fields = params.fields
+	if (params.filter) query.filter = JSON.stringify(params.filter)
 
-	return query;
+	return query
 }
 
 /**
@@ -62,7 +62,7 @@ export function buildSearchQuery(params: QueryParamsSearch): { q: string } & Rec
 	return {
 		q: params.q,
 		...buildQuery(params),
-	};
+	}
 }
 
 /**
@@ -83,4 +83,4 @@ export const filter = {
 	between: <T>(min: T, max: T) => ({ between: [min, max] }),
 	isNull: () => ({ null: true }),
 	isNotNull: () => ({ notNull: true }),
-};
+}
