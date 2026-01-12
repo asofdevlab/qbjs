@@ -1,0 +1,29 @@
+{
+	"extends": "@repo/typescript-config/base.json",
+	"compilerOptions": {
+		"noEmit": false,
+		"outDir": "dist",
+		"rootDir": "src",
+
+		/* Library-friendly output */
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+
+		/* Types */
+		"declaration": true,
+		"declarationMap": true,
+
+		/* Clean library output */
+		"verbatimModuleSyntax": false,
+		"allowImportingTsExtensions": false,
+
+		/* Not needed for libraries */
+		"jsx": "preserve",
+		"allowJs": false,
+		"paths": {
+			"@/api/*": ["../../examples/hono-drizzle/hono-drizzle-pg/src/*"]
+		}
+	},
+	"include": ["src"]
+}

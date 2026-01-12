@@ -21,7 +21,7 @@
 		"prepare": "husky",
 		"clean": "turbo run clean && rm -rf node_modules",
 		"clean:turbo": "rm -rf .turbo",
-		"clean:deps": "rm -rf node_modules packages/*/node_modules apps/*/node_modules examples/*/node_modules documentation/*/node_modules",
+		"clean:deps": "rm -rf node_modules packages/*/node_modules apps/*/node_modules examples/*/node_modules integrations/*/node_modules",
 		"clean:lockfiles": "rm -rf pnpm-lock.yaml",
 		"reset": "pnpm clean:lockfiles clean:deps && pnpm clean:turbo && pnpm install",
 		"db:generate": "pnpm --filter @examples/hono-drizzle-pg db:generate",
@@ -36,6 +36,9 @@
 	},
 	"packageManager": "pnpm@10.14.0",
 	"engines": {
-		"node": ">=24.11.1"
+		"node": ">=20"
+	},
+	"dependencies": {
+		"@tanstack/react-query": "^5.90.16"
 	}
 }

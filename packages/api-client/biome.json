@@ -1,0 +1,8 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.3.10/schema.json",
+	"extends": ["@repo/biome-config/base"],
+	"root": false,
+	"linter": {
+		"includes": ["src/**"]
+	}
+}
