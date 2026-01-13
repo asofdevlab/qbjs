@@ -1,0 +1,198 @@
+---
+title: Client Quick Start
+description: Build type-safe API queries on the client with @qbjs/client
+icon: Zap
+---
+
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+`@qbjs/client` is a lightweight, zero-dependency query builder for constructing API queries on the client side. It pairs perfectly with `@qbjs/core` on the server.
+
+## Installation
+
+<Tabs items={["npm", "pnpm", "yarn"]}>
+  <Tab value="npm">
+    ```bash
+    npm install @qbjs/client
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash
+    pnpm add @qbjs/client
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash
+    yarn add @qbjs/client
+    ```
+  </Tab>
+</Tabs>
+
+## Quick Example
+
+```typescript
+import { query, filter } from "@qbjs/client";
+
+// Build a query with fluent API
+const queryString = query()
+  .page(1)
+  .limit(20)
+  .fields("id", "name", "email")
+  .sortDesc("createdAt")
+  .where("status", "eq", "active")
+  .toQueryString();
+
+// Result: page=1&limit=20&fields=id,name,email&sort=createdAt:desc&filter={"status":{"eq":"active"}}
+```
+
+## Step-by-Step Guide
+
+<Steps>
+<Step>
+### Create a Query Builder
+
+Use the `query()` function to start building:
+
+```typescript
+import { query } from "@qbjs/client";
+
+const builder = query();
+```
+</Step>
+
+<Step>
+### Add Pagination
+
+```typescript
+// Set page and limit separately
+const q1 = query().page(2).limit(25);
+
+// Or use paginate() for both at once
+const q2 = query().paginate(2, 25);
+```
+</Step>
+
+<Step>
+### Select Fields
+
+```typescript
+// Select specific fields to return
+const q = query().fields("id", "name", "email", "status");
+
+// Or use the alias select()
+const q2 = query().select("id", "name");
+```
+</Step>
+
+<Step>
+### Add Sorting
+
+```typescript
+// Sort ascending
+const q1 = query().sortAsc("name");
+
+// Sort descending
+const q2 = query().sortDesc("createdAt");
+
+// Multiple sorts
+const q3 = query()
+  .sort("status", "asc")
+  .sort("createdAt", "desc");
+```
+</Step>
+
+<Step>
+### Add Filters
+
+```typescript
+import { query, filter } from "@qbjs/client";
+
+// Using where() for simple conditions
+const q1 = query()
+  .where("status", "eq", "active")
+  .where("role", "in", ["admin", "moderator"]);
+
+// Using filter helpers for complex conditions
+const q2 = query().filter({
+  status: filter.eq("active"),
+  age: filter.gte(18),
+  name: filter.contains("john"),
+});
+```
+</Step>
+
+<Step>
+### Build the Query
+
+```typescript
+// Get as query string for fetch/axios
+const queryString = query()
+  .page(1)
+  .limit(10)
+  .toQueryString();
+
+// Get as object for URLSearchParams
+const queryObject = query()
+  .page(1)
+  .limit(10)
+  .build();
+
+// Get raw params for inspection
+const params = query()
+  .page(1)
+  .limit(10)
+  .toParams();
+```
+</Step>
+</Steps>
+
+## Using with Fetch
+
+```typescript
+import { query, filter } from "@qbjs/client";
+
+async function fetchUsers() {
+  const q = query()
+    .fields("id", "name", "email")
+    .where("status", "eq", "active")
+    .sortDesc("createdAt")
+    .paginate(1, 20)
+    .toQueryString();
+
+  const response = await fetch(`/api/users?${q}`);
+  return response.json();
+}
+```
+
+## Using with React Query
+
+```typescript
+import { useQuery } from "@tanstack/react-query";
+import { query, filter } from "@qbjs/client";
+
+function useUsers(page: number, status: string) {
+  const q = query()
+    .page(page)
+    .limit(20)
+    .where("status", "eq", status)
+    .sortDesc("createdAt");
+
+  return useQuery({
+    // Stable query key from builder
+    queryKey: q.toQueryKey(["users"]),
+    queryFn: () => fetch(`/api/users?${q.toQueryString()}`).then(r => r.json()),
+  });
+}
+```
+
+<Callout type="info">
+  The `toQueryKey()` method generates a stable, deterministic key perfect for React Query caching.
+</Callout>
+
+## Next Steps
+
+- Learn about all [filter operators](/docs/getting-started/client-basic-usage)
+- See the full [API reference](/docs/api-reference/query-builder)
+- Explore [React Query integration](/docs/guides/react-query)

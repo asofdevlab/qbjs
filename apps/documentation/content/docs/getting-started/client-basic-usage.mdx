@@ -1,0 +1,370 @@
+---
+title: Client Basic Usage
+description: Complete guide to @qbjs/client query builder features
+icon: BookOpen
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+This guide covers all features of the `@qbjs/client` query builder.
+
+## Query Builder API
+
+### Creating a Builder
+
+```typescript
+import { query, QueryBuilder } from "@qbjs/client";
+
+// Using the factory function (recommended)
+const q = query();
+
+// Using the class directly
+const q2 = new QueryBuilder();
+
+// With type-safe field names
+type UserFields = "id" | "name" | "email" | "status";
+const q3 = query<UserFields>();
+```
+
+### Immutability
+
+The query builder is immutable. Each method returns a new instance:
+
+```typescript
+const base = query().page(1);
+const withLimit = base.limit(10);    // base is unchanged
+const withSort = base.sortAsc("name"); // base is still unchanged
+
+console.log(base.toParams());      // { page: 1 }
+console.log(withLimit.toParams()); // { page: 1, limit: 10 }
+console.log(withSort.toParams());  // { page: 1, sort: [{ field: "name", direction: "asc" }] }
+```
+
+## Pagination
+
+```typescript
+// Set page number (1-indexed)
+query().page(2)
+
+// Set items per page
+query().limit(25)
+
+// Set both at once
+query().paginate(2, 25)
+```
+
+### Pagination Helpers
+
+```typescript
+import { nextPage, prevPage, calculateOffset } from "@qbjs/client";
+
+const current = 5;
+nextPage(current);        // 6
+prevPage(current);        // 4
+prevPage(1);              // 1 (minimum is 1)
+
+calculateOffset(3, 10);   // 20 (for page 3 with 10 items per page)
+```
+
+## Field Selection
+
+```typescript
+// Select fields to return
+query().fields("id", "name", "email")
+
+// Alias method
+query().select("id", "name", "email")
+
+// Fields are deduplicated
+query().fields("id", "name").fields("name", "email")
+// Result: fields = ["id", "name", "email"]
+```
+
+## Sorting
+
+```typescript
+// Sort with explicit direction
+query().sort("name", "asc")
+query().sort("createdAt", "desc")
+
+// Convenience methods
+query().sortAsc("name")
+query().sortDesc("createdAt")
+
+// Multiple sorts (applied in order)
+query()
+  .sortAsc("status")
+  .sortDesc("createdAt")
+// Result: sort=status:asc,createdAt:desc
+```
+
+## Filtering
+
+### Using where()
+
+The `where()` method provides a simple way to add filter conditions:
+
+```typescript
+query()
+  .where("status", "eq", "active")
+  .where("age", "gte", 18)
+  .where("role", "in", ["admin", "user"])
+```
+
+Multiple `where()` calls are combined with AND logic.
+
+### Using filter()
+
+For complex filters, use the `filter()` method with filter helpers:
+
+```typescript
+import { query, filter } from "@qbjs/client";
+
+query().filter({
+  status: filter.eq("active"),
+  age: filter.between(18, 65),
+  email: filter.endsWith("@example.com"),
+})
+```
+
+### Filter Helpers
+
+The `filter` object (also exported as `f` for brevity) provides type-safe filter builders:
+
+```typescript
+import { filter, f } from "@qbjs/client";
+
+// Equality
+filter.eq("value")           // { eq: "value" }
+filter.eqi("VALUE")          // { eqi: "VALUE" } (case-insensitive)
+filter.ne("value")           // { ne: "value" }
+filter.nei("VALUE")          // { nei: "VALUE" } (case-insensitive)
+
+// Comparison
+filter.lt(100)               // { lt: 100 }
+filter.lte(100)              // { lte: 100 }
+filter.gt(0)                 // { gt: 0 }
+filter.gte(0)                // { gte: 0 }
+
+// Arrays
+filter.in(["a", "b", "c"])   // { in: ["a", "b", "c"] }
+filter.notIn(["x", "y"])     // { notIn: ["x", "y"] }
+
+// Strings
+filter.contains("john")      // { contains: "john" }
+filter.containsi("JOHN")     // { containsi: "JOHN" } (case-insensitive)
+filter.notContains("spam")   // { notContains: "spam" }
+filter.notContainsi("SPAM")  // { notContainsi: "SPAM" }
+filter.startsWith("admin")   // { startsWith: "admin" }
+filter.endsWith("@test.com") // { endsWith: "@test.com" }
+
+// Range
+filter.between(10, 100)      // { between: [10, 100] }
+
+// Null checks
+filter.isNull()              // { null: true }
+filter.isNotNull()           // { notNull: true }
+```
+
+### Logical Operators
+
+Combine filters with logical operators:
+
+```typescript
+import { query, filter } from "@qbjs/client";
+
+// AND - all conditions must match
+query().filter(
+  filter.and(
+    { status: filter.eq("active") },
+    { role: filter.in(["admin", "user"]) }
+  )
+)
+
+// OR - any condition can match
+query().filter(
+  filter.or(
+    { status: filter.eq("active") },
+    { status: filter.eq("pending") }
+  )
+)
+
+// NOT - negate a condition
+query().filter(
+  filter.not({ status: filter.eq("deleted") })
+)
+
+// Using builder methods
+query()
+  .and(
+    { status: filter.eq("active") },
+    { verified: filter.eq(true) }
+  )
+
+query()
+  .or(
+    { role: filter.eq("admin") },
+    { role: filter.eq("superuser") }
+  )
+
+query().not({ status: filter.eq("banned") })
+```
+
+## Building Output
+
+### toQueryString()
+
+Returns a URL-encoded query string:
+
+```typescript
+const qs = query()
+  .page(1)
+  .limit(10)
+  .where("status", "eq", "active")
+  .toQueryString();
+
+// "page=1&limit=10&filter=%7B%22status%22%3A%7B%22eq%22%3A%22active%22%7D%7D"
+```
+
+### build()
+
+Returns an object with string values (for URLSearchParams):
+
+```typescript
+const obj = query()
+  .page(1)
+  .limit(10)
+  .sortDesc("createdAt")
+  .build();
+
+// { page: "1", limit: "10", sort: "createdAt:desc" }
+```
+
+### toParams()
+
+Returns the raw query parameters object:
+
+```typescript
+const params = query()
+  .page(1)
+  .limit(10)
+  .toParams();
+
+// { page: 1, limit: 10 }
+```
+
+### toQueryKey()
+
+Generates a stable key for React Query:
+
+```typescript
+const key = query()
+  .page(1)
+  .where("status", "eq", "active")
+  .toQueryKey(["users", "list"]);
+
+// ["users", "list", { page: 1, filter: { status: { eq: "active" } } }]
+```
+
+## Serialization Utilities
+
+### serialize()
+
+Serialize query params to a record of strings:
+
+```typescript
+import { serialize } from "@qbjs/client";
+
+const result = serialize({
+  page: 1,
+  limit: 10,
+  sort: [{ field: "name", direction: "asc" }],
+  fields: ["id", "name"],
+  filter: { status: { eq: "active" } },
+});
+
+// { page: "1", limit: "10", sort: "name:asc", fields: "id,name", filter: "{...}" }
+```
+
+### toQueryString()
+
+Convert params directly to a query string:
+
+```typescript
+import { toQueryString } from "@qbjs/client";
+
+const qs = toQueryString({
+  page: 1,
+  limit: 10,
+});
+
+// "page=1&limit=10"
+```
+
+## Print and Parse
+
+For debugging and testing:
+
+```typescript
+import { printQuery, parseQuery } from "@qbjs/client";
+
+// Print params to query string
+const qs = printQuery({
+  page: 1,
+  limit: 10,
+  sort: [{ field: "name", direction: "asc" }],
+});
+// "page=1&limit=10&sort=name%3Aasc"
+
+// Parse query string back to params
+const params = parseQuery("page=1&limit=10&sort=name:asc");
+// { page: 1, limit: 10, sort: [{ field: "name", direction: "asc" }] }
+```
+
+## Type Safety
+
+Use generics for type-safe field names:
+
+```typescript
+type PostFields = "id" | "title" | "content" | "authorId" | "createdAt";
+
+const q = query<PostFields>()
+  .fields("id", "title", "authorId")  // ✓ Type-checked
+  .sortDesc("createdAt")               // ✓ Type-checked
+  .where("authorId", "eq", "123");     // ✓ Type-checked
+
+// TypeScript error: "invalid" is not assignable to PostFields
+// q.fields("invalid");
+```
+
+## Complete Example
+
+```typescript
+import { query, filter } from "@qbjs/client";
+
+type UserFields = "id" | "name" | "email" | "status" | "role" | "createdAt";
+
+// Build a complex query
+const usersQuery = query<UserFields>()
+  .select("id", "name", "email", "status")
+  .where("status", "eq", "active")
+  .filter({
+    role: filter.in(["admin", "moderator"]),
+    createdAt: filter.gte("2024-01-01"),
+  })
+  .sortDesc("createdAt")
+  .sortAsc("name")
+  .paginate(1, 25);
+
+// Use with fetch
+const response = await fetch(`/api/users?${usersQuery.toQueryString()}`);
+
+// Use with React Query
+const queryKey = usersQuery.toQueryKey(["users"]);
+```
+
+## Next Steps
+
+- See the [API Reference](/docs/api-reference/query-builder) for complete documentation
+- Learn about [server-side parsing](/docs/getting-started/quick-start) with `@qbjs/core`
+- Explore [security configuration](/docs/core-concepts/security) for production APIs

@@ -1,36 +1,155 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Next.js + @qbjs/client Integration Example
+
+This example demonstrates how to use `@qbjs/client` with Next.js and React Query for building type-safe, fluent API queries.
+
+## Features Demonstrated
+
+### 1. Fluent QueryBuilder API
+
+Build queries using a chainable, immutable API:
+
+```typescript
+import { query } from "@qbjs/client"
+
+const params = query()
+  .paginate(1, 10)
+  .sortDesc("createdAt")
+  .fields("id", "title", "slug", "createdAt")
+  .filter({ published: f.eq(true) })
+  .toParams()
+```
+
+### 2. Type-Safe Filter Helpers
+
+Use the `f` helper object for building filters with full TypeScript support:
+
+```typescript
+import { f } from "@qbjs/client"
+
+// Simple equality
+{ status: f.eq("active") }
+
+// Comparison operators
+{ age: f.gte(18) }
+{ price: f.between(10, 100) }
+
+// String operators
+{ title: f.contains("typescript") }
+{ email: f.endsWith("@example.com") }
+
+// Array operators
+{ category: f.in(["tech", "news"]) }
+
+// Logical combinations
+f.and(
+  { published: f.eq(true) },
+  f.or(
+    { featured: f.eq(true) },
+    { views: f.gte(1000) }
+  )
+)
+```
+
+### 3. Pagination Helpers
+
+Navigate through paginated results easily:
+
+```typescript
+import { nextPage, prevPage, calculateOffset } from "@qbjs/client"
+
+const currentPage = 5
+const next = nextPage(currentPage)     // 6
+const prev = prevPage(currentPage)     // 4
+const offset = calculateOffset(5, 10)  // 40
+```
+
+### 4. Query Key Generation for React Query
+
+Generate stable, deterministic query keys:
+
+```typescript
+import { createQueryKey } from "@qbjs/client"
+
+const queryKey = createQueryKey(["posts", "list"], params)
+// Same params always produce identical keys
+```
+
+### 5. Search Queries
+
+Build search queries with required search term:
+
+```typescript
+import { buildSearchQuery } from "@qbjs/client"
+
+const searchQuery = buildSearchQuery({
+  q: "typescript",
+  page: 1,
+  limit: 10,
+  sort: [{ field: "relevance", direction: "desc" }]
+})
+```
+
+## Project Structure
+
+```
+integrations/nextjs/
+├── app/
+│   ├── _components/
+│   │   └── post-list.tsx      # Post list with pagination
+│   └── blog/
+│       └── [id]/[slug]/
+│           └── page.tsx       # Post detail page
+├── lib/
+│   ├── api-client.ts          # API client setup
+│   ├── providers.tsx          # React Query provider
+│   └── queries/
+│       └── posts/
+│           └── index.ts       # Post queries using @qbjs/client
+└── package.json
+```
 
 ## Getting Started
 
-First, run the development server:
+1. Install dependencies:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Set up environment variables:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+cp .env.example .env
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. Run the development server:
+
+```bash
+pnpm dev
+```
+
+4. Open [http://localhost:3001](http://localhost:3001) in your browser.
+
+## Key Files
+
+### `lib/queries/posts/index.ts`
+
+Demonstrates:
+- Query key factory using `createQueryKey`
+- Fluent QueryBuilder API usage
+- Filter helpers (`f.eq`, `f.and`, `f.or`)
+- Pagination helpers (`nextPage`, `prevPage`)
+- Search query building
+
+### `app/_components/post-list.tsx`
+
+Demonstrates:
+- Building queries with `query()` fluent API
+- URL-based pagination with `nextPage`/`prevPage`
+- Filtered queries with `f` helpers
 
 ## Learn More
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [@qbjs/client Documentation](https://qbjs.asof.dev)
+- [Next.js Documentation](https://nextjs.org/docs)
+- [React Query Documentation](https://tanstack.com/query)

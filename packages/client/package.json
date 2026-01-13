@@ -1,0 +1,78 @@
+{
+	"name": "@qbjs/client",
+	"version": "0.1.4",
+	"description": "A lightweight utility, zero-dependency client-side query builder for @qbjs/core. Build clean, type-safe filters, pagination, sorting, and search queries without boilerplate.",
+	"keywords": [
+		"query-utility",
+		"query-builder",
+		"query-string",
+		"orm",
+		"drizzle",
+		"drizzle-orm",
+		"hono",
+		"api",
+		"rest-api",
+		"filter",
+		"sort",
+		"pagination",
+		"postgresql",
+		"mysql",
+		"sqlite",
+		"typescript"
+	],
+	"homepage": "https://qbjs.asof.dev",
+	"bugs": {
+		"url": "https://github.com/asofdevlab/qbjs/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/asofdevlab/qbjs.git",
+		"directory": "packages/core"
+	},
+	"license": "MIT",
+	"author": "@asofdevlab (https://github.com/asofdevlab)",
+	"type": "module",
+	"main": "./dist/index.cjs",
+	"types": "./dist/index.d.ts",
+	"module": "./dist/index.js",
+	"sideEffects": false,
+	"exports": {
+		".": {
+			"import": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.js"
+			},
+			"require": {
+				"types": "./dist/index.d.cts",
+				"default": "./dist/index.cjs"
+			}
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "pkgroll --clean-dist",
+		"dev": "pkgroll --watch",
+		"release": "bumpp && npm publish",
+		"audit:moderate": "pnpm audit --audit-level moderate",
+		"format": "biome format --write",
+		"lint": "biome lint --write",
+		"check-types": "tsc --noEmit",
+		"test": "vitest run"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.3.10",
+		"@qbjs/core": "^0.1.4",
+		"@types/node": "^25.0.3",
+		"bumpp": "^10.3.2",
+		"fast-check": "^4.5.3",
+		"pkgroll": "^2.21.5",
+		"typescript": "^5.9.3",
+		"vitest": "^4.0.16"
+	},
+	"packageManager": "pnpm@10.14.0",
+	"engines": {
+		"node": ">=20"
+	}
+}
