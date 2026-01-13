@@ -1,6 +1,6 @@
 {
 	"name": "@qbjs/client",
-	"version": "0.1.4",
+	"version": "0.1.5",
 	"description": "A lightweight utility, zero-dependency client-side query builder for @qbjs/core. Build clean, type-safe filters, pagination, sorting, and search queries without boilerplate.",
 	"keywords": [
 		"query-utility",
