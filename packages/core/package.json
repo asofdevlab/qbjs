@@ -80,6 +80,7 @@
 	],
 	"scripts": {
 		"build": "pkgroll --clean-dist",
+		"audit:moderate": "pnpm audit --audit-level moderate",
 		"dev": "pkgroll --watch",
 		"release": "bumpp && npm publish",
 		"format": "biome format --write",

@@ -1,2 +1,3 @@
 turbo format
+turbo check-types
 turbo lint

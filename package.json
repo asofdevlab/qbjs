@@ -8,7 +8,7 @@
 		"email": "support@asof.dev"
 	},
 	"scripts": {
-		"build": "turbo run build",
+		"build": "turbo run build --filter=[HEAD^1]",
 		"dev": "turbo run dev",
 		"dev:doc": "pnpm --filter @qbjs/documentation dev",
 		"publish:core": "pnpm --filter @qbjs/core release",
@@ -16,6 +16,11 @@
 		"doc:typegen": "pnpm --filter @qbjs/documentation cf-typegen",
 		"deploy:doc": "pnpm --filter @qbjs/documentation cf-typegen && pnpm --filter @qbjs/documentation deploy:cf",
 		"format": "turbo run format",
+		"lint": "turbo run lint",
+		"format:core": "pnpm --filter @qbjs/core format",
+		"audit:core": "pnpm --filter @qbjs/core audit:moderate",
+		"checktypes:core": "pnpm --filter @qbjs/core check-types",
+		"test:core": "pnpm --filter @qbjs/core test",
 		"test": "turbo run test",
 		"check-types": "turbo run check-types",
 		"prepare": "husky",
