@@ -2,7 +2,8 @@ name: CI
 
 on:
   pull_request:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
   audit:
@@ -19,6 +20,12 @@ jobs:
         # package.json#pnpm.overrides to patched version.
         # Second, use package.json#pnpm.auditConfig.ignoreCves if harmless.
         run: pnpm audit:core
+      - name: Audit @qbjs/core dependencies
+        # when a vulnerability is found that fails the build, try to use
+        # `pnpm audit --fix` which will override version within
+        # package.json#pnpm.overrides to patched version.
+        # Second, use package.json#pnpm.auditConfig.ignoreCves if harmless.
+        run: pnpm audit:client
 
   check-types:
     name: Type Check
@@ -30,6 +37,8 @@ jobs:
         uses: ./.github/actions/install
       - name: Type Check @qbjs/core
         run: pnpm checktypes:core
+      - name: Type Check @qbjs/client
+        run: pnpm checktypes:client
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -38,8 +47,23 @@ jobs:
         uses: actions/checkout@v4
       - name: Install
         uses: ./.github/actions/install
-      - name: Lint
+      - name: Lint @qbjs/core
+        run: pnpm lint:core
+      - name: Lint @qbjs/client
+        run: pnpm lint:client
+
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install
+        uses: ./.github/actions/install
+      - name: Format @qbjs/core
         run: pnpm format:core
+      - name: Lint @qbjs/client
+        run: pnpm lint:client
 
   unit-tests:
     name: Unit Tests
@@ -51,8 +75,10 @@ jobs:
         uses: ./.github/actions/install
       - name: Test @qbjs/core
         run: pnpm test:core
+      - name: Test @qbjs/client
+        run: pnpm test:client
 
 # stops workflows in progress if a new commit is added to PR
-# concurrency:
-#   group: ci-${{ github.ref }}
-#   cancel-in-progress: true
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true

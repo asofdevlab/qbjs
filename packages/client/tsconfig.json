@@ -1,0 +1,32 @@
+{
+	"compilerOptions": {
+		"noEmit": false,
+		"outDir": "dist",
+		"rootDir": "src",
+
+		/* Library-friendly output */
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+
+		/* Types */
+		"declaration": true,
+		"declarationMap": true,
+
+		/* Clean library output */
+		"verbatimModuleSyntax": false,
+		"allowImportingTsExtensions": false,
+
+		/* Not needed for libraries */
+		"jsx": "preserve",
+		"allowJs": false,
+		"types": ["node"],
+		"baseUrl": ".",
+
+		/* Skip type checking of third-party declaration files */
+		"skipLibCheck": true
+	},
+
+	"include": ["src"],
+	"exclude": ["node_modules", "dist"]
+}

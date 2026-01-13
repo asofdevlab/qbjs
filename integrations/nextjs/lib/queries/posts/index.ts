@@ -1,6 +1,6 @@
+import { buildQuery, buildSearchQuery, type QueryParams, type SearchQueryParams } from "@qbjs/client"
 import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query"
 import apiClient from "@/lib/api-client"
-import { buildQuery, buildSearchQuery, type QueryParams, type QueryParamsSearch } from "../utils"
 
 // Query key factory for cache management
 export const postKeys = {
@@ -21,7 +21,7 @@ export const useGetAllPost = (params?: QueryParams) =>
 		},
 	})
 
-export const useSearchPost = (params: QueryParamsSearch) =>
+export const useSearchPost = (params: SearchQueryParams) =>
 	queryOptions({
 		queryKey: postKeys.list(params),
 		queryFn: async () => {
