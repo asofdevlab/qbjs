@@ -6,8 +6,7 @@
 		"field-selection",
 		"security-config",
 		"database-adapters",
-		"error-handling",
-		"migration"
+		"error-handling"
 	],
 	"defaultOpen": true
 }

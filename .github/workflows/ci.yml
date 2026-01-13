@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+# when a vulnerability is found that fails the build, try to use
+# `pnpm audit --fix` which will override version within
+# package.json#pnpm.overrides to patched version.
+# Second, use package.json#pnpm.auditConfig.ignoreCves if harmless.
 jobs:
   audit:
     name: Audit
@@ -15,17 +19,9 @@ jobs:
         uses: actions/checkout@v4
       - name: Install
         uses: ./.github/actions/install
-      - name: Audit @qbjs/core dependencies
-        # when a vulnerability is found that fails the build, try to use
-        # `pnpm audit --fix` which will override version within
-        # package.json#pnpm.overrides to patched version.
-        # Second, use package.json#pnpm.auditConfig.ignoreCves if harmless.
         run: pnpm audit:core
       - name: Audit @qbjs/core dependencies
-        # when a vulnerability is found that fails the build, try to use
-        # `pnpm audit --fix` which will override version within
-        # package.json#pnpm.overrides to patched version.
-        # Second, use package.json#pnpm.auditConfig.ignoreCves if harmless.
+      - name: Audit @qbjs/client dependencies
         run: pnpm audit:client
 
   check-types:

@@ -11,8 +11,8 @@
 		"postinstall": "fumadocs-mdx",
 		"lint": "biome check --write",
 		"format": "biome format --write",
-		"deploy:cf": "pnpm run build && wrangler deploy",
-		"preview": "pnpm run build && vite preview",
+		"deploy:cf": "vite build && wrangler deploy",
+		"preview": "vite build && vite preview",
 		"cf-typegen": "wrangler types"
 	},
 	"dependencies": {
